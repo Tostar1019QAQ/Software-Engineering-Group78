@@ -2,10 +2,6 @@
 
 # Before devlopment (important!)
 
-## Please obey GitFlow workflow
-
-![GitFlow workflow](./gitflow.png)
-
 ## Quick Start
 
 ### Run with Maven
