@@ -36,7 +36,7 @@ public class MainFrame extends JFrame {
         
         // Create all panels
         dashboardPanel = new DashboardPanel();
-        budgetPanel = new BudgetPanel();
+        budgetPanel = new BudgetPanel(cardLayout, contentPanel);
         billsPanel = new BillsPanel(cardLayout, contentPanel);
         importPanel = new ImportPanel(cardLayout, contentPanel);  // Use the new ImportPanel
         aiAnalysisPanel = new JPanel(); // TODO: Replace with AIAnalysisPanel
@@ -84,6 +84,7 @@ public class MainFrame extends JFrame {
         button.setForeground(Color.WHITE);
         button.setFocusPainted(false);
         button.setBorderPainted(false);
+        button.setVerticalAlignment(SwingConstants.CENTER);
         
         // Add hover effect
         button.addMouseListener(new java.awt.event.MouseAdapter() {
