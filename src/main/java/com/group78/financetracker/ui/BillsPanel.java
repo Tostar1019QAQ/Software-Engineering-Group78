@@ -24,7 +24,7 @@ public class BillsPanel extends JPanel {
     private JPanel alertsPanel;
     private JTable billsTable;
     private DefaultTableModel tableModel;
-    
+
     // Form fields
     private JTextField billNameField;
     private JTextField amountField;
@@ -37,23 +37,23 @@ public class BillsPanel extends JPanel {
         this.cardLayout = cardLayout;
         this.contentPanel = contentPanel;
         this.billService = new BillService();
-        
+
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        
+
         createFormPanel();
         createTablePanel();
         createAlertsPanel();
-        
+
         // Layout components
         JPanel centerPanel = new JPanel(new BorderLayout(10, 10));
         centerPanel.add(formPanel, BorderLayout.NORTH);
         centerPanel.add(tablePanel, BorderLayout.CENTER);
-        
+
         add(createHeaderPanel(), BorderLayout.NORTH);
         add(centerPanel, BorderLayout.CENTER);
         add(alertsPanel, BorderLayout.EAST);
-        
+
         // Load initial data
         refreshData();
     }
@@ -61,13 +61,13 @@ public class BillsPanel extends JPanel {
     private void refreshData() {
         // Clear existing data
         tableModel.setRowCount(0);
-        
+
         // Load bills from service
         List<Bill> bills = billService.getAllBills();
         for (Bill bill : bills) {
             addBillToTable(bill);
         }
-        
+
         // Update alerts panel
         updateAlertsPanel();
     }
@@ -81,7 +81,7 @@ public class BillsPanel extends JPanel {
 
         JPanel alertsList = new JPanel();
         alertsList.setLayout(new BoxLayout(alertsList, BoxLayout.Y_AXIS));
-        
+
         // Add alerts for upcoming and overdue bills
         List<Bill> upcomingBills = billService.getUpcomingBills();
         if (upcomingBills.isEmpty()) {
@@ -109,15 +109,15 @@ public class BillsPanel extends JPanel {
         // Title
         JLabel titleLabel = new JLabel("Bill Reminders");
         titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
-        
+
         // Back button
         JButton backButton = new JButton("← Back to Dashboard");
         backButton.setFocusPainted(false);
         backButton.addActionListener(e -> cardLayout.show(contentPanel, "Dashboard"));
-        
+
         header.add(backButton, BorderLayout.WEST);
         header.add(titleLabel, BorderLayout.CENTER);
-        
+
         return header;
     }
 
@@ -127,37 +127,37 @@ public class BillsPanel extends JPanel {
 
         // Input fields panel
         JPanel inputsPanel = new JPanel(new GridLayout(6, 2, 10, 10));
-        
+
         // Bill Name
         billNameField = new JTextField();
         inputsPanel.add(new JLabel("Bill Name:"));
         inputsPanel.add(billNameField);
-        
+
         // Amount
         amountField = new JTextField();
         inputsPanel.add(new JLabel("Amount:"));
         inputsPanel.add(amountField);
-        
+
         // Due Date
         dueDateChooser = new JDateChooser();
         dueDateChooser.setDate(new Date());
         dueDateChooser.setDateFormatString("yyyy-MM-dd");
         inputsPanel.add(new JLabel("Due Date:"));
         inputsPanel.add(dueDateChooser);
-        
+
         // Payment Method
         String[] paymentMethods = {"Credit Card", "Debit Card", "Bank Transfer", "Cash"};
         paymentMethodCombo = new JComboBox<>(paymentMethods);
         inputsPanel.add(new JLabel("Payment Method:"));
         inputsPanel.add(paymentMethodCombo);
-        
+
         // Notifications
         JPanel notificationPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         emailNotificationCheck = new JCheckBox("Email");
         pushNotificationCheck = new JCheckBox("Push Notification");
         notificationPanel.add(emailNotificationCheck);
         notificationPanel.add(pushNotificationCheck);
-        
+
         inputsPanel.add(new JLabel("Notification Method:"));
         inputsPanel.add(notificationPanel);
 
@@ -165,10 +165,10 @@ public class BillsPanel extends JPanel {
         JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton clearButton = new JButton("Clear Form");
         JButton addButton = new JButton("Add Bill");
-        
+
         clearButton.addActionListener(e -> clearForm());
         addButton.addActionListener(e -> addBill());
-        
+
         buttonsPanel.add(clearButton);
         buttonsPanel.add(addButton);
 
@@ -192,10 +192,10 @@ public class BillsPanel extends JPanel {
         // Create table
         billsTable = new JTable(tableModel);
         billsTable.setRowHeight(30);
-        
+
         // Custom renderer for status column
         billsTable.getColumnModel().getColumn(4).setCellRenderer(new StatusColumnRenderer());
-        
+
         // Add table to scroll pane
         JScrollPane scrollPane = new JScrollPane(billsTable);
         tablePanel.add(scrollPane, BorderLayout.CENTER);
@@ -204,12 +204,12 @@ public class BillsPanel extends JPanel {
     private JPanel createAlertCard(Bill bill) {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        
-        // 根据状态设置边框颜色
+
+        // Border color based on status
         Color borderColor = getColorForStatus(bill.getStatus());
         card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(borderColor),
-            BorderFactory.createEmptyBorder(10, 10, 10, 10)
+                BorderFactory.createLineBorder(borderColor),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)
         ));
         card.setBackground(new Color(255, 255, 255));
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
@@ -258,7 +258,6 @@ public class BillsPanel extends JPanel {
 
     private void addBill() {
         try {
-            // Validate input
             String billName = billNameField.getText().trim();
             if (billName.isEmpty()) {
                 showError("Please enter a bill name.");
@@ -278,37 +277,30 @@ public class BillsPanel extends JPanel {
             }
 
             LocalDate dueDate = selectedDate.toInstant()
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate();
-            
-            // 验证日期不能是过去的日期
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate();
+
             if (dueDate.isBefore(LocalDate.now())) {
                 showError("Due date cannot be in the past.");
                 return;
             }
 
             String paymentMethod = (String) paymentMethodCombo.getSelectedItem();
-            
-            // Create and save new bill
-            Bill bill = new Bill(
-                "",  // ID will be generated by service
-                billName,
-                amount,
-                dueDate,
-                paymentMethod,
-                emailNotificationCheck.isSelected(),
-                pushNotificationCheck.isSelected()
-            );
-            
-            billService.addBill(bill);
-            
-            // Refresh UI
-            refreshData();
-            
-            // Clear form
-            clearForm();
 
-            // Show success message
+            Bill bill = new Bill(
+                    "",
+                    billName,
+                    amount,
+                    dueDate,
+                    paymentMethod,
+                    emailNotificationCheck.isSelected(),
+                    pushNotificationCheck.isSelected()
+            );
+
+            billService.addBill(bill);
+
+            refreshData();
+            clearForm();
             showSuccess("Bill added successfully!");
 
         } catch (NumberFormatException e) {
@@ -318,12 +310,12 @@ public class BillsPanel extends JPanel {
 
     private void addBillToTable(Bill bill) {
         Object[] rowData = {
-            bill.getName(),
-            "$" + bill.getAmount().toString(),
-            bill.getDueDate().format(DateTimeFormatter.ISO_LOCAL_DATE),
-            bill.getPaymentMethod(),
-            createStatusLabel(bill.getStatus()),
-            createActionButtons(bill)
+                bill.getName(),
+                "$" + bill.getAmount().toString(),
+                bill.getDueDate().format(DateTimeFormatter.ISO_LOCAL_DATE),
+                bill.getPaymentMethod(),
+                createStatusLabel(bill.getStatus()),
+                createActionButtons(bill)
         };
         tableModel.addRow(rowData);
     }
@@ -336,36 +328,39 @@ public class BillsPanel extends JPanel {
 
     private JPanel createActionButtons(Bill bill) {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-        
+
         JButton editButton = new JButton("Edit");
         JButton deleteButton = new JButton("Delete");
-        
+
         editButton.setFocusPainted(false);
         deleteButton.setFocusPainted(false);
-        
-        // Add action listeners
+
         editButton.addActionListener(e -> editBill(bill));
         deleteButton.addActionListener(e -> deleteBill(bill));
-        
+
         panel.add(editButton);
         panel.add(deleteButton);
-        
+
         return panel;
     }
-
+    private void createAlertsPanel() {
+        alertsPanel = new JPanel();
+        updateAlertsPanel();
+    }
+    
     private void editBill(Bill bill) {
-        // TODO: Implement edit functionality
+        // Implement edit functionality
         showError("Edit functionality not yet implemented.");
     }
 
     private void deleteBill(Bill bill) {
         int confirm = JOptionPane.showConfirmDialog(
-            this,
-            "Are you sure you want to delete this bill?",
-            "Confirm Delete",
-            JOptionPane.YES_NO_OPTION
+                this,
+                "Are you sure you want to delete this bill?",
+                "Confirm Delete",
+                JOptionPane.YES_NO_OPTION
         );
-        
+
         if (confirm == JOptionPane.YES_OPTION) {
             billService.deleteBill(bill.getId());
             refreshData();
@@ -375,44 +370,38 @@ public class BillsPanel extends JPanel {
 
     private void showError(String message) {
         JOptionPane.showMessageDialog(
-            this,
-            message,
-            "Error",
-            JOptionPane.ERROR_MESSAGE
+                this,
+                message,
+                "Error",
+                JOptionPane.ERROR_MESSAGE
         );
     }
 
     private void showSuccess(String message) {
         JOptionPane.showMessageDialog(
-            this,
-            message,
-            "Success",
-            JOptionPane.INFORMATION_MESSAGE
+                this,
+                message,
+                "Success",
+                JOptionPane.INFORMATION_MESSAGE
         );
     }
 
-    // Custom renderer for status column
     private class StatusColumnRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(
-            JTable table, Object value,
-            boolean isSelected, boolean hasFocus,
-            int row, int column
+                JTable table, Object value,
+                boolean isSelected, boolean hasFocus,
+                int row, int column
         ) {
             Component c = super.getTableCellRendererComponent(
-                table, value, isSelected, hasFocus, row, column);
-            
+                    table, value, isSelected, hasFocus, row, column);
+
             if (value instanceof JLabel) {
                 JLabel label = (JLabel) value;
                 c.setForeground(label.getForeground());
             }
-            
+
             return c;
         }
     }
-
-    private void createAlertsPanel() {
-        alertsPanel = new JPanel();
-        updateAlertsPanel();
-    }
-} 
+}

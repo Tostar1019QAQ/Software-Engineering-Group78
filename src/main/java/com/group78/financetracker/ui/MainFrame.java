@@ -30,21 +30,17 @@ public class MainFrame extends JFrame {
     }
 
     private void createPanels() {
-        // Create card layout for switching panels
         cardLayout = new CardLayout();
         contentPanel = new JPanel(cardLayout);
-        
-        // Create all panels
+
         dashboardPanel = new DashboardPanel();
         budgetPanel = new BudgetPanel();
         billsPanel = new BillsPanel(cardLayout, contentPanel);
-        importPanel = new ImportPanel(cardLayout, contentPanel);  // Use the new ImportPanel
-        aiAnalysisPanel = new JPanel(); // TODO: Replace with AIAnalysisPanel
-        
-        // Add temporary labels to panels (except for Dashboard, Budget, Bills, and Import)
+        importPanel = new ImportPanel(cardLayout, contentPanel);
+        aiAnalysisPanel = new JPanel();  // Placeholder
+
         addTemporaryLabel(aiAnalysisPanel, "AI Analysis");
-        
-        // Add all panels to card layout
+
         contentPanel.add(dashboardPanel, "Dashboard");
         contentPanel.add(budgetPanel, "Budget");
         contentPanel.add(billsPanel, "Bills");
@@ -64,7 +60,7 @@ public class MainFrame extends JFrame {
         navigationPanel.setLayout(new BoxLayout(navigationPanel, BoxLayout.Y_AXIS));
         navigationPanel.setBackground(new Color(74, 107, 255));
         navigationPanel.setPreferredSize(new Dimension(200, 0));
-        
+
         // Add navigation buttons
         addNavigationButton("Dashboard", "📊", "Dashboard");
         addNavigationButton("Budget", "💰", "Budget");
@@ -78,13 +74,11 @@ public class MainFrame extends JFrame {
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
         button.setMaximumSize(new Dimension(180, 40));
         button.setMargin(new Insets(10, 15, 10, 15));
-        
-        // Set button style
         button.setBackground(new Color(74, 107, 255));
         button.setForeground(Color.WHITE);
         button.setFocusPainted(false);
         button.setBorderPainted(false);
-        
+
         // Add hover effect
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
@@ -95,10 +89,10 @@ public class MainFrame extends JFrame {
                 button.setBackground(new Color(74, 107, 255));
             }
         });
-        
+
         // Add click event
         button.addActionListener(e -> cardLayout.show(contentPanel, cardName));
-        
+
         navigationPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         navigationPanel.add(button);
     }
@@ -108,4 +102,4 @@ public class MainFrame extends JFrame {
         add(navigationPanel, BorderLayout.WEST);
         add(contentPanel, BorderLayout.CENTER);
     }
-} 
+}

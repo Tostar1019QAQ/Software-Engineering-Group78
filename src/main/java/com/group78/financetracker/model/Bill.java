@@ -1,8 +1,7 @@
 package com.group78.financetracker.model;
-
+import java.time.temporal.ChronoUnit;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 
 public class Bill {
     private String id;
@@ -14,7 +13,12 @@ public class Bill {
     private boolean pushNotification;
     private String status;
 
-    public Bill(String id, String name, BigDecimal amount, LocalDate dueDate, 
+    // 默认构造函数，供 Jackson 使用
+    public Bill() {
+    }
+
+    // 构造函数
+    public Bill(String id, String name, BigDecimal amount, LocalDate dueDate,
                 String paymentMethod, boolean emailNotification, boolean pushNotification) {
         this.id = id;
         this.name = name;
@@ -29,7 +33,7 @@ public class Bill {
     public void updateStatus() {
         LocalDate today = LocalDate.now();
         long daysUntilDue = ChronoUnit.DAYS.between(today, dueDate);
-        
+
         if (dueDate.isBefore(today)) {
             this.status = "Overdue";
         } else if (daysUntilDue <= 3) {
@@ -44,7 +48,7 @@ public class Bill {
     public String getStatusDescription() {
         LocalDate today = LocalDate.now();
         long daysUntilDue = ChronoUnit.DAYS.between(today, dueDate);
-        
+
         if (dueDate.isBefore(today)) {
             return "Overdue since " + dueDate.toString();
         } else if (daysUntilDue == 0) {
@@ -58,7 +62,7 @@ public class Bill {
         }
     }
 
-    // Getters
+    // Getters and Setters
     public String getId() { return id; }
     public String getName() { return name; }
     public BigDecimal getAmount() { return amount; }
@@ -68,15 +72,11 @@ public class Bill {
     public boolean hasPushNotification() { return pushNotification; }
     public String getStatus() { return status; }
 
-    // Setters
     public void setId(String id) { this.id = id; }
     public void setName(String name) { this.name = name; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
-    public void setDueDate(LocalDate dueDate) { 
-        this.dueDate = dueDate;
-        updateStatus();
-    }
+    public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; updateStatus(); }
     public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
     public void setEmailNotification(boolean emailNotification) { this.emailNotification = emailNotification; }
     public void setPushNotification(boolean pushNotification) { this.pushNotification = pushNotification; }
-} 
+}
