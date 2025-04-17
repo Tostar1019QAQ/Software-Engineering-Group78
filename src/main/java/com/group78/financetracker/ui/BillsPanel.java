@@ -204,8 +204,11 @@ public class BillsPanel extends JPanel {
     private JPanel createAlertCard(Bill bill) {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        
+        // 根据状态设置边框颜色
+        Color borderColor = getColorForStatus(bill.getStatus());
         card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(getColorForStatus(bill.getStatus())),
+            BorderFactory.createLineBorder(borderColor),
             BorderFactory.createEmptyBorder(10, 10, 10, 10)
         ));
         card.setBackground(new Color(255, 255, 255));
@@ -215,37 +218,32 @@ public class BillsPanel extends JPanel {
         nameLabel.setFont(nameLabel.getFont().deriveFont(Font.BOLD));
         nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        String statusText = getStatusText(bill);
-        JLabel statusLabel = new JLabel(statusText);
-        statusLabel.setForeground(getColorForStatus(bill.getStatus()));
+        JLabel statusLabel = new JLabel(bill.getStatusDescription());
+        statusLabel.setForeground(borderColor);
         statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel amountLabel = new JLabel("Amount: $" + bill.getAmount().toString());
+        amountLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         card.add(nameLabel);
         card.add(Box.createRigidArea(new Dimension(0, 5)));
         card.add(statusLabel);
+        card.add(Box.createRigidArea(new Dimension(0, 5)));
+        card.add(amountLabel);
 
         return card;
-    }
-
-    private String getStatusText(Bill bill) {
-        switch (bill.getStatus()) {
-            case "Overdue":
-                return "Overdue since " + bill.getDueDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
-            case "Due Soon":
-                return "Due " + (bill.getDueDate().equals(LocalDate.now()) ? "today" : "tomorrow");
-            default:
-                return "Due on " + bill.getDueDate().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        }
     }
 
     private Color getColorForStatus(String status) {
         switch (status) {
             case "Overdue":
-                return new Color(220, 53, 69);
+                return new Color(220, 53, 69);  // Red
             case "Due Soon":
-                return new Color(255, 193, 7);
+                return new Color(255, 193, 7);  // Yellow
+            case "Upcoming":
+                return new Color(255, 136, 0);  // Orange
             default:
-                return new Color(40, 167, 69);
+                return new Color(40, 167, 69);  // Green
         }
     }
 
@@ -282,6 +280,13 @@ public class BillsPanel extends JPanel {
             LocalDate dueDate = selectedDate.toInstant()
                 .atZone(ZoneId.systemDefault())
                 .toLocalDate();
+            
+            // 验证日期不能是过去的日期
+            if (dueDate.isBefore(LocalDate.now())) {
+                showError("Due date cannot be in the past.");
+                return;
+            }
+
             String paymentMethod = (String) paymentMethodCombo.getSelectedItem();
             
             // Create and save new bill

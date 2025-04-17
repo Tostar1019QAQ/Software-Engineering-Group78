@@ -2,6 +2,7 @@ package com.group78.financetracker.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 public class Bill {
     private String id;
@@ -27,12 +28,33 @@ public class Bill {
 
     public void updateStatus() {
         LocalDate today = LocalDate.now();
+        long daysUntilDue = ChronoUnit.DAYS.between(today, dueDate);
+        
         if (dueDate.isBefore(today)) {
             this.status = "Overdue";
-        } else if (dueDate.equals(today) || dueDate.equals(today.plusDays(1))) {
+        } else if (daysUntilDue <= 3) {
             this.status = "Due Soon";
-        } else {
+        } else if (daysUntilDue <= 7) {
             this.status = "Upcoming";
+        } else {
+            this.status = "Normal";
+        }
+    }
+
+    public String getStatusDescription() {
+        LocalDate today = LocalDate.now();
+        long daysUntilDue = ChronoUnit.DAYS.between(today, dueDate);
+        
+        if (dueDate.isBefore(today)) {
+            return "Overdue since " + dueDate.toString();
+        } else if (daysUntilDue == 0) {
+            return "Due today";
+        } else if (daysUntilDue == 1) {
+            return "Due tomorrow";
+        } else if (daysUntilDue <= 7) {
+            return "Due in " + daysUntilDue + " days";
+        } else {
+            return "Due on " + dueDate.toString();
         }
     }
 

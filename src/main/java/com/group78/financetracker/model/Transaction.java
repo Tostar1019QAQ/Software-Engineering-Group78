@@ -11,9 +11,15 @@ public class Transaction {
     private LocalDateTime dateTime;
     private TransactionType type;
     private String paymentMethod;
+    private String currency;
 
     public Transaction(String id, BigDecimal amount, String category, String description,
                       LocalDateTime dateTime, TransactionType type, String paymentMethod) {
+        this(id, amount, category, description, dateTime, type, paymentMethod, "CNY");
+    }
+
+    public Transaction(String id, BigDecimal amount, String category, String description,
+                      LocalDateTime dateTime, TransactionType type, String paymentMethod, String currency) {
         this.id = id;
         this.amount = amount;
         this.category = category;
@@ -21,6 +27,7 @@ public class Transaction {
         this.dateTime = dateTime;
         this.type = type;
         this.paymentMethod = paymentMethod;
+        this.currency = currency;
     }
 
     // Getters
@@ -31,6 +38,7 @@ public class Transaction {
     public LocalDateTime getDateTime() { return dateTime; }
     public TransactionType getType() { return type; }
     public String getPaymentMethod() { return paymentMethod; }
+    public String getCurrency() { return currency; }
 
     // Setters
     public void setId(String id) { this.id = id; }
@@ -40,11 +48,12 @@ public class Transaction {
     public void setDateTime(LocalDateTime dateTime) { this.dateTime = dateTime; }
     public void setType(TransactionType type) { this.type = type; }
     public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+    public void setCurrency(String currency) { this.currency = currency; }
 
     @Override
     public String toString() {
-        return String.format("Transaction{id='%s', amount=%s, category='%s', description='%s', " +
+        return String.format("Transaction{id='%s', amount=%s %s, category='%s', description='%s', " +
                            "dateTime=%s, type=%s, paymentMethod='%s'}", 
-                           id, amount, category, description, dateTime, type, paymentMethod);
+                           id, amount, currency, category, description, dateTime, type, paymentMethod);
     }
 } 
