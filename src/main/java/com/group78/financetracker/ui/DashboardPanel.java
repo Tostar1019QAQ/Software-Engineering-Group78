@@ -123,6 +123,9 @@ public class DashboardPanel extends JPanel {
         // Load budget data from file
         loadBudgetDataFromFile();
         
+        // Reload bills data
+        billService.reloadBills();
+        
         // Update all panels
         updateDashboard();
     }

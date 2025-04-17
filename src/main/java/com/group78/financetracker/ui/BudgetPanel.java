@@ -399,6 +399,10 @@ public class BudgetPanel extends JPanel {
         budgetTable.setRowHeight(30);
         budgetTable.getColumnModel().getColumn(4).setCellRenderer(new ProgressBarRenderer());
         
+        // Set Actions column width
+        budgetTable.getColumnModel().getColumn(5).setPreferredWidth(120);
+        budgetTable.getColumnModel().getColumn(5).setMinWidth(120);
+        
         // Set button renderer
         budgetTable.getColumnModel().getColumn(5).setCellRenderer(new ButtonRenderer());
         budgetTable.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -410,13 +414,22 @@ public class BudgetPanel extends JPanel {
                 if (row < budgetTable.getRowCount() && row >= 0 && column == 5) {
                     JPanel panel = (JPanel)budgetTable.getValueAt(row, 5);
                     
-                    // Determine which button was clicked
+                    // 获取鼠标点击的位置
+                    Rectangle cellRect = budgetTable.getCellRect(row, column, false);
+                    Point pointInCell = new Point(e.getX() - cellRect.x, e.getY() - cellRect.y);
+                    
+                    // 确定点击了哪个按钮
                     Component[] components = panel.getComponents();
-                    for (Component comp : components) {
-                        if (comp instanceof JButton) {
-                            JButton button = (JButton)comp;
-                            if (button.getText().equals("Edit")) {
-                                editCategory(row);
+                    for (int i = 0; i < components.length; i++) {
+                        if (components[i] instanceof JButton) {
+                            JButton button = (JButton)components[i];
+                            if (button.getBounds().contains(pointInCell)) {
+                                if (button.getText().equals("Edit")) {
+                                    editCategory(row);
+                                } else if (button.getText().equals("Delete")) {
+                                    deleteCategory(row);
+                                }
+                                break;
                             }
                         }
                     }
@@ -637,12 +650,25 @@ public class BudgetPanel extends JPanel {
     }
 
     private JPanel createActionButtons() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        JPanel panel = new JPanel(new GridLayout(1, 2, 2, 0));
+        panel.setPreferredSize(new Dimension(120, 25));
         
         JButton editButton = new JButton("Edit");
+        JButton deleteButton = new JButton("Delete");
+        
+        // Set smaller font and margins
+        Font smallFont = new Font("Dialog", Font.PLAIN, 12);
+        editButton.setFont(smallFont);
+        deleteButton.setFont(smallFont);
+        
+        editButton.setMargin(new Insets(1, 2, 1, 2));
+        deleteButton.setMargin(new Insets(1, 2, 1, 2));
+        
         editButton.setFocusPainted(false);
+        deleteButton.setFocusPainted(false);
         
         panel.add(editButton);
+        panel.add(deleteButton);
         
         return panel;
     }
