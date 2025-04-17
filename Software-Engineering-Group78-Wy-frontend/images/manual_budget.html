@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Finance Tracker - Manual Budget Setting</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: #4a6bff;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .user-info {
+            font-size: 1rem;
+        }
+        
+        .back-button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        .back-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        main {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+        }
+        
+        h1 {
+            color: #4a6bff;
+            margin-bottom: 1.5rem;
+        }
+        
+        .section-title {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: #4a6bff;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        
+        .form-container {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: #4a6bff;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .form-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+        
+        .button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+        
+        .primary-btn {
+            background-color: #4a6bff;
+            color: white;
+            border: none;
+        }
+        
+        .primary-btn:hover {
+            background-color: #3a5ae8;
+        }
+        
+        .secondary-btn {
+            background-color: #f8f9fa;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+        
+        .secondary-btn:hover {
+            background-color: #e9ecef;
+        }
+        
+        .budget-table-container {
+            margin-bottom: 2rem;
+        }
+        
+        .budget-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .budget-table th {
+            background-color: #f8f9fa;
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .budget-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .budget-table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .progress-container {
+            background-color: #e9ecef;
+            border-radius: 4px;
+            height: 8px;
+            margin-top: 0.5rem;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-normal {
+            background-color: #4caf50;
+        }
+        
+        .progress-warning {
+            background-color: #ffc107;
+        }
+        
+        .progress-danger {
+            background-color: #dc3545;
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            display: inline-block;
+        }
+        
+        .status-normal {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .action-btn {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background-color 0.3s;
+        }
+        
+        .edit-btn {
+            background-color: #4a6bff;
+            color: white;
+            border: none;
+        }
+        
+        .edit-btn:hover {
+            background-color: #3a5ae8;
+        }
+        
+        .delete-btn {
+            background-color: #e63946;
+            color: white;
+            border: none;
+        }
+        
+        .delete-btn:hover {
+            background-color: #c02e37;
+        }
+        
+        .summary-section {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .summary-title {
+            margin-bottom: 1rem;
+        }
+        
+        .summary-chart {
+            height: 300px;
+            margin-top: 1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            main {
+                padding: 1.5rem;
+            }
+            
+            .form-group {
+                margin-bottom: 1rem;
+            }
+            
+            .form-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <button class="back-button" onclick="navigateToDashboard()">←</button>
+            <div class="logo">Personal Finance Tracker</div>
+            <div class="user-info">User: Zhang San</div>
+        </header>
+        
+        <main>
+            <h1>Manual Budget Setting</h1>
+            
+            <section class="form-container">
+                <h2 class="section-title">Add New Budget Category</h2>
+                <form id="budgetForm">
+                    <div class="form-group">
+                        <label for="categoryName">Category Name</label>
+                        <input type="text" id="categoryName" placeholder="e.g., Food, Entertainment" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="budgetAmount">Monthly Budget Amount</label>
+                        <input type="number" id="budgetAmount" placeholder="0.00" step="0.01" required>
+                    </div>
+                    
+                    <div class="form-buttons">
+                        <button type="reset" class="button secondary-btn">Clear Form</button>
+                        <button type="button" class="button primary-btn" onclick="addBudgetCategory()">Add Category</button>
+                    </div>
+                </form>
+            </section>
+            
+            <section class="budget-table-container">
+                <h2 class="section-title">Budget Categories</h2>
+                <table class="budget-table">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Budget Amount</th>
+                            <th>Spent Amount</th>
+                            <th>Remaining</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="budgetTableBody">
+                        <!-- Budget categories will be inserted here -->
+                        <tr>
+                            <td>Food</td>
+                            <td>¥1500</td>
+                            <td>¥1200</td>
+                            <td>¥300</td>
+                            <td>
+                                <span class="status-badge status-normal">Normal</span>
+                                <div class="progress-container">
+                                    <div class="progress-bar progress-normal" style="width: 80%"></div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="action-btn edit-btn">Edit</button>
+                                    <button class="action-btn delete-btn">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Entertainment</td>
+                            <td>¥800</td>
+                            <td>¥600</td>
+                            <td>¥200</td>
+                            <td>
+                                <span class="status-badge status-warning">Warning</span>
+                                <div class="progress-container">
+                                    <div class="progress-bar progress-warning" style="width: 75%"></div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="action-btn edit-btn">Edit</button>
+                                    <button class="action-btn delete-btn">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Shopping</td>
+                            <td>¥1000</td>
+                            <td>¥1200</td>
+                            <td>¥-200</td>
+                            <td>
+                                <span class="status-badge status-danger">Over Budget</span>
+                                <div class="progress-container">
+                                    <div class="progress-bar progress-danger" style="width: 120%"></div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="action-btn edit-btn">Edit</button>
+                                    <button class="action-btn delete-btn">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <section class="summary-section">
+                <h3 class="summary-title">Budget Summary</h3>
+                <p>Total Budget: ¥3300</p>
+                <p>Total Spent: ¥2900</p>
+                <p>Remaining Budget: ¥400</p>
+                
+                <div class="summary-chart" id="budgetSummaryChart">
+                    <!-- Chart will be rendered here -->
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <script>
+        // Function to navigate back to dashboard
+        function navigateToDashboard() {
+            window.location.href = 'dashboard.html';
+        }
+        
+        // Function to add a new budget category
+        function addBudgetCategory() {
+            const categoryName = document.getElementById('categoryName').value;
+            const budgetAmount = document.getElementById('budgetAmount').value;
+            
+            if (!categoryName || !budgetAmount) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            // Create new row for the budget table
+            const budgetTableBody = document.getElementById('budgetTableBody');
+            const newRow = document.createElement('tr');
+            
+            newRow.innerHTML = `
+                <td>${categoryName}</td>
+                <td>¥${parseFloat(budgetAmount).toFixed(2)}</td>
+                <td>¥0</td>
+                <td>¥${parseFloat(budgetAmount).toFixed(2)}</td>
+                <td>
+                    <span class="status-badge status-normal">Normal</span>
+                    <div class="progress-container">
+                        <div class="progress-bar progress-normal" style="width: 0%"></div>
+                    </div>
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="action-btn edit-btn">Edit</button>
+                        <button class="action-btn delete-btn">Delete</button>
+                    </div>
+                </td>
+            `;
+            
+            budgetTableBody.appendChild(newRow);
+            
+            // Reset form
+            document.getElementById('budgetForm').reset();
+            
+            // Show success message
+            alert('Budget category added successfully!');
+            
+            // Update summary chart
+            updateBudgetSummary();
+        }
+        
+        // Function to update budget summary
+        function updateBudgetSummary() {
+            // This would normally calculate values from the table data
+            // For this mock implementation, we'll use static data
+            const summaryData = {
+                totalBudget: 3300,
+                totalSpent: 2900,
+                remainingBudget: 400
+            };
+            
+            // Update summary text
+            document.querySelector('.summary-section p:nth-child(2)').textContent = `Total Budget: ¥${summaryData.totalBudget}`;
+            document.querySelector('.summary-section p:nth-child(3)').textContent = `Total Spent: ¥${summaryData.totalSpent}`;
+            document.querySelector('.summary-section p:nth-child(4)').textContent = `Remaining Budget: ¥${summaryData.remainingBudget}`;
+            
+            // Update chart
+            // In a real application, you would implement a charting library like Chart.js
+        }
+    </script>
+</body>
+</html>
