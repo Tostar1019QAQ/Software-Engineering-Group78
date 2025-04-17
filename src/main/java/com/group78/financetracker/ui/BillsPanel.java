@@ -7,6 +7,7 @@ import com.toedter.calendar.JDateChooser;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -181,24 +182,81 @@ public class BillsPanel extends JPanel {
         tablePanel.setBorder(BorderFactory.createTitledBorder("Upcoming Bills"));
 
         // Create table model with columns
-        String[] columns = {"Bill Name", "Amount", "Due Date", "Payment Method", "Status", "Actions"};
+        String[] columns = {"Bill Name", "Amount", "Due Date", "Payment Method", "Edit", "Delete", "ID"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 5; // Only actions column is editable
+                return column == 4 || column == 5; // Only Edit and Delete columns are editable
             }
         };
 
         // Create table
         billsTable = new JTable(tableModel);
         billsTable.setRowHeight(30);
+<<<<<<< HEAD
 
         // Custom renderer for status column
         billsTable.getColumnModel().getColumn(4).setCellRenderer(new StatusColumnRenderer());
 
+=======
+        
+        // 设置按钮渲染器
+        billsTable.getColumnModel().getColumn(4).setCellRenderer(new ButtonRenderer("Edit"));
+        billsTable.getColumnModel().getColumn(5).setCellRenderer(new ButtonRenderer("Delete"));
+        
+        // 隐藏ID列
+        billsTable.getColumnModel().getColumn(6).setMinWidth(0);
+        billsTable.getColumnModel().getColumn(6).setMaxWidth(0);
+        billsTable.getColumnModel().getColumn(6).setWidth(0);
+        
+>>>>>>> origin/Wy-frontend
         // Add table to scroll pane
         JScrollPane scrollPane = new JScrollPane(billsTable);
         tablePanel.add(scrollPane, BorderLayout.CENTER);
+        
+        // Add mouse listener to handle button clicks
+        billsTable.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int column = billsTable.getColumnModel().getColumnIndexAtX(e.getX());
+                int row = e.getY() / billsTable.getRowHeight();
+                
+                if (row < billsTable.getRowCount() && row >= 0 && (column == 4 || column == 5)) {
+                    // 获取该行对应的账单
+                    String billId = (String) billsTable.getValueAt(row, 6); // 隐藏列存储ID
+                    List<Bill> bills = billService.getAllBills();
+                    Bill selectedBill = null;
+                    
+                    for (Bill bill : bills) {
+                        if (bill.getId().equals(billId)) {
+                            selectedBill = bill;
+                            break;
+                        }
+                    }
+                    
+                    if (selectedBill != null) {
+                        if (column == 4) { // Edit column
+                            editBill(selectedBill);
+                        } else if (column == 5) { // Delete column
+                            deleteBill(selectedBill);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    private void addBillToTable(Bill bill) {
+        Object[] rowData = {
+            bill.getName(),
+            "¥" + bill.getAmount().toString(),
+            bill.getDueDate().format(DateTimeFormatter.ISO_LOCAL_DATE),
+            bill.getPaymentMethod(),
+            "Edit", // 这里只放字符串，由渲染器显示为按钮
+            "Delete", // 这里只放字符串，由渲染器显示为按钮
+            bill.getId() // 添加隐藏列存储ID
+        };
+        tableModel.addRow(rowData);
     }
 
     private JPanel createAlertCard(Bill bill) {
