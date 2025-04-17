@@ -37,12 +37,11 @@ public class MainFrame extends JFrame {
         // Create all panels
         dashboardPanel = new DashboardPanel();
         budgetPanel = new BudgetPanel();
-        billsPanel = new BillsPanel(cardLayout, contentPanel);  // Pass layout parameters
-        importPanel = new JPanel(); // TODO: Replace with ImportPanel
+        billsPanel = new BillsPanel(cardLayout, contentPanel);
+        importPanel = new ImportPanel(cardLayout, contentPanel);  // Use the new ImportPanel
         aiAnalysisPanel = new JPanel(); // TODO: Replace with AIAnalysisPanel
         
-        // Add temporary labels to panels (except for Dashboard, Budget, and Bills)
-        addTemporaryLabel(importPanel, "Import Transactions");
+        // Add temporary labels to panels (except for Dashboard, Budget, Bills, and Import)
         addTemporaryLabel(aiAnalysisPanel, "AI Analysis");
         
         // Add all panels to card layout
