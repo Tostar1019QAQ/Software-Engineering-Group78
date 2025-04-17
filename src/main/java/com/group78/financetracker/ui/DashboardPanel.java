@@ -4,6 +4,8 @@ import com.group78.financetracker.model.Transaction;
 import com.group78.financetracker.service.BillService;
 import com.group78.financetracker.service.DashboardService;
 import com.group78.financetracker.service.ImportService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
@@ -22,8 +24,16 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 
 public class DashboardPanel extends JPanel {
+    private static final Logger logger = LoggerFactory.getLogger(DashboardPanel.class);
     private final DashboardService dashboardService;
     private final BillService billService;
     private JPanel summaryPanel;
@@ -97,7 +107,6 @@ public class DashboardPanel extends JPanel {
         refreshButton.setFocusPainted(false);
         refreshButton.addActionListener(e -> {
             reloadData();
-            updateDashboard();
         });
         
         header.add(titleLabel, BorderLayout.CENTER);
@@ -110,6 +119,65 @@ public class DashboardPanel extends JPanel {
         // Get ImportService instance and reload data
         ImportService importService = dashboardService.getImportService();
         importService.reloadDefaultData();
+        
+        // Load budget data from file
+        loadBudgetDataFromFile();
+        
+        // Reload bills data
+        billService.reloadBills();
+        
+        // Update all panels
+        updateDashboard();
+    }
+    
+    /**
+     * Loads budget data from the budget.csv file
+     */
+    private void loadBudgetDataFromFile() {
+        try {
+            File budgetFile = new File("data/budget.csv");
+            if (!budgetFile.exists()) {
+                logger.info("No budget data file found. Using default budget.");
+                return;
+            }
+            
+            try (FileReader reader = new FileReader(budgetFile);
+                 CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT
+                     .withFirstRecordAsHeader()
+                     .withIgnoreHeaderCase()
+                     .withTrim())) {
+                
+                boolean firstRow = true;
+                
+                for (CSVRecord record : csvParser) {
+                    if (firstRow) {
+                        // First row contains total budget info
+                        String totalBudgetStr = record.get("TotalBudget");
+                        String startDateStr = record.get("StartDate");
+                        String endDateStr = record.get("EndDate");
+                        
+                        if (!totalBudgetStr.isEmpty()) {
+                            BigDecimal totalBudget = new BigDecimal(totalBudgetStr);
+                            
+                            if (!startDateStr.isEmpty() && !endDateStr.isEmpty()) {
+                                LocalDate startDate = LocalDate.parse(startDateStr);
+                                LocalDate endDate = LocalDate.parse(endDateStr);
+                                
+                                // Update budget in DashboardService
+                                dashboardService.updateTotalBudget(totalBudget, startDate, endDate);
+                            }
+                        }
+                        
+                        firstRow = false;
+                    }
+                }
+                
+                logger.info("Budget data loaded successfully");
+            }
+            
+        } catch (Exception e) {
+            logger.error("Failed to load budget data: {}", e.getMessage(), e);
+        }
     }
 
     private JPanel createSummaryPanel() {
@@ -278,7 +346,15 @@ public class DashboardPanel extends JPanel {
         // Get real data
         BigDecimal totalExpenses = dashboardService.getTotalExpenses();
         int pendingBillsCount = billService.getUpcomingBills().size();
-        BigDecimal remainingBudget = MONTHLY_BUDGET.subtract(totalExpenses);
+        
+        // Get budget from DashboardService
+        BigDecimal monthlyBudget = dashboardService.getTotalBudget();
+        // If no budget is set, use the default value
+        if (monthlyBudget.compareTo(BigDecimal.ZERO) == 0) {
+            monthlyBudget = MONTHLY_BUDGET;
+        }
+        
+        BigDecimal remainingBudget = monthlyBudget.subtract(totalExpenses);
         
         if (remainingBudget.compareTo(BigDecimal.ZERO) < 0) {
             remainingBudget = BigDecimal.ZERO;
@@ -293,6 +369,12 @@ public class DashboardPanel extends JPanel {
     private void updateSpendingChart() {
         // Get spending data for last 7 days
         Map<LocalDate, BigDecimal> dailySpending = dashboardService.getDailySpending(7);
+        
+        // Log the data for debugging
+        logger.debug("Spending data for chart:");
+        for (Map.Entry<LocalDate, BigDecimal> entry : dailySpending.entrySet()) {
+            logger.debug("{}: {}", entry.getKey(), entry.getValue());
+        }
         
         // Update dataset
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
@@ -328,6 +410,9 @@ public class DashboardPanel extends JPanel {
         
         // Update chart panel
         spendingChartPanel.setChart(chart);
+        
+        // Force repaint
+        spendingChartPanel.repaint();
     }
     
     private BigDecimal getMaxDailySpending(Map<LocalDate, BigDecimal> dailySpending) {
