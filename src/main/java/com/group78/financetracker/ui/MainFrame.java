@@ -1,8 +1,5 @@
 package com.group78.financetracker.ui;
 
-import com.group78.financetracker.service.AIService;
-import com.group78.financetracker.service.ImportService;
-import com.group78.financetracker.service.TransactionService;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -17,25 +14,12 @@ public class MainFrame extends JFrame {
     private JPanel aiAnalysisPanel;
     private JPanel navigationPanel;
     private CardLayout cardLayout;
-    
-    // 服务实例
-    private AIService aiService;
-    private ImportService importService;
-    private TransactionService transactionService;
 
     public MainFrame() {
-        // 初始化服务
-        initializeServices();
         initializeFrame();
         createPanels();
         createNavigationPanel();
         layoutComponents();
-    }
-    
-    private void initializeServices() {
-        aiService = new AIService();
-        importService = new ImportService();
-        transactionService = new TransactionService(importService);
     }
 
     private void initializeFrame() {
@@ -52,10 +36,13 @@ public class MainFrame extends JFrame {
         
         // Create all panels
         dashboardPanel = new DashboardPanel();
-        budgetPanel = new BudgetPanel(cardLayout, contentPanel);
+        budgetPanel = new BudgetPanel();
         billsPanel = new BillsPanel(cardLayout, contentPanel);
         importPanel = new ImportPanel(cardLayout, contentPanel);  // Use the new ImportPanel
-        aiAnalysisPanel = new AIPanel(aiService, transactionService); // 使用新的AIPanel
+        aiAnalysisPanel = new JPanel(); // TODO: Replace with AIAnalysisPanel
+        
+        // Add temporary labels to panels (except for Dashboard, Budget, Bills, and Import)
+        addTemporaryLabel(aiAnalysisPanel, "AI Analysis");
         
         // Add all panels to card layout
         contentPanel.add(dashboardPanel, "Dashboard");
@@ -63,6 +50,13 @@ public class MainFrame extends JFrame {
         contentPanel.add(billsPanel, "Bills");
         contentPanel.add(importPanel, "Import");
         contentPanel.add(aiAnalysisPanel, "AI Analysis");
+    }
+
+    private void addTemporaryLabel(JPanel panel, String text) {
+        panel.setLayout(new BorderLayout());
+        JLabel label = new JLabel(text, SwingConstants.CENTER);
+        label.setFont(new Font("Arial", Font.BOLD, 24));
+        panel.add(label, BorderLayout.CENTER);
     }
 
     private void createNavigationPanel() {
@@ -90,7 +84,6 @@ public class MainFrame extends JFrame {
         button.setForeground(Color.WHITE);
         button.setFocusPainted(false);
         button.setBorderPainted(false);
-        button.setVerticalAlignment(SwingConstants.CENTER);
         
         // Add hover effect
         button.addMouseListener(new java.awt.event.MouseAdapter() {

@@ -7,7 +7,6 @@ import com.toedter.calendar.JDateChooser;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -182,11 +181,11 @@ public class BillsPanel extends JPanel {
         tablePanel.setBorder(BorderFactory.createTitledBorder("Upcoming Bills"));
 
         // Create table model with columns
-        String[] columns = {"Bill Name", "Amount", "Due Date", "Payment Method", "Edit", "Delete", "ID"};
+        String[] columns = {"Bill Name", "Amount", "Due Date", "Payment Method", "Status", "Actions"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 4 || column == 5; // Only Edit and Delete columns are editable
+                return column == 5; // Only actions column is editable
             }
         };
 
@@ -194,62 +193,12 @@ public class BillsPanel extends JPanel {
         billsTable = new JTable(tableModel);
         billsTable.setRowHeight(30);
         
-        // 设置按钮渲染器
-        billsTable.getColumnModel().getColumn(4).setCellRenderer(new ButtonRenderer("Edit"));
-        billsTable.getColumnModel().getColumn(5).setCellRenderer(new ButtonRenderer("Delete"));
-        
-        // 隐藏ID列
-        billsTable.getColumnModel().getColumn(6).setMinWidth(0);
-        billsTable.getColumnModel().getColumn(6).setMaxWidth(0);
-        billsTable.getColumnModel().getColumn(6).setWidth(0);
+        // Custom renderer for status column
+        billsTable.getColumnModel().getColumn(4).setCellRenderer(new StatusColumnRenderer());
         
         // Add table to scroll pane
         JScrollPane scrollPane = new JScrollPane(billsTable);
         tablePanel.add(scrollPane, BorderLayout.CENTER);
-        
-        // Add mouse listener to handle button clicks
-        billsTable.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseClicked(java.awt.event.MouseEvent e) {
-                int column = billsTable.getColumnModel().getColumnIndexAtX(e.getX());
-                int row = e.getY() / billsTable.getRowHeight();
-                
-                if (row < billsTable.getRowCount() && row >= 0 && (column == 4 || column == 5)) {
-                    // 获取该行对应的账单
-                    String billId = (String) billsTable.getValueAt(row, 6); // 隐藏列存储ID
-                    List<Bill> bills = billService.getAllBills();
-                    Bill selectedBill = null;
-                    
-                    for (Bill bill : bills) {
-                        if (bill.getId().equals(billId)) {
-                            selectedBill = bill;
-                            break;
-                        }
-                    }
-                    
-                    if (selectedBill != null) {
-                        if (column == 4) { // Edit column
-                            editBill(selectedBill);
-                        } else if (column == 5) { // Delete column
-                            deleteBill(selectedBill);
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    private void addBillToTable(Bill bill) {
-        Object[] rowData = {
-            bill.getName(),
-            "¥" + bill.getAmount().toString(),
-            bill.getDueDate().format(DateTimeFormatter.ISO_LOCAL_DATE),
-            bill.getPaymentMethod(),
-            "Edit", // 这里只放字符串，由渲染器显示为按钮
-            "Delete", // 这里只放字符串，由渲染器显示为按钮
-            bill.getId() // 添加隐藏列存储ID
-        };
-        tableModel.addRow(rowData);
     }
 
     private JPanel createAlertCard(Bill bill) {
@@ -367,119 +316,46 @@ public class BillsPanel extends JPanel {
         }
     }
 
+    private void addBillToTable(Bill bill) {
+        Object[] rowData = {
+            bill.getName(),
+            "$" + bill.getAmount().toString(),
+            bill.getDueDate().format(DateTimeFormatter.ISO_LOCAL_DATE),
+            bill.getPaymentMethod(),
+            createStatusLabel(bill.getStatus()),
+            createActionButtons(bill)
+        };
+        tableModel.addRow(rowData);
+    }
+
+    private JLabel createStatusLabel(String status) {
+        JLabel label = new JLabel(status);
+        label.setForeground(getColorForStatus(status));
+        return label;
+    }
+
+    private JPanel createActionButtons(Bill bill) {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        
+        JButton editButton = new JButton("Edit");
+        JButton deleteButton = new JButton("Delete");
+        
+        editButton.setFocusPainted(false);
+        deleteButton.setFocusPainted(false);
+        
+        // Add action listeners
+        editButton.addActionListener(e -> editBill(bill));
+        deleteButton.addActionListener(e -> deleteBill(bill));
+        
+        panel.add(editButton);
+        panel.add(deleteButton);
+        
+        return panel;
+    }
+
     private void editBill(Bill bill) {
-        // 创建表单面板
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        
-        JTextField nameField = new JTextField(bill.getName());
-        JTextField amountField = new JTextField(bill.getAmount().toString());
-        JDateChooser dateChooser = new JDateChooser();
-        dateChooser.setDate(Date.from(bill.getDueDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));
-        
-        String[] paymentMethods = {"Credit Card", "Debit Card", "Bank Transfer", "Cash"};
-        JComboBox<String> paymentMethodCombo = new JComboBox<>(paymentMethods);
-        paymentMethodCombo.setSelectedItem(bill.getPaymentMethod());
-        
-        JCheckBox emailCheck = new JCheckBox("Email Notification", bill.hasEmailNotification());
-        JCheckBox pushCheck = new JCheckBox("Push Notification", bill.hasPushNotification());
-        
-        // 创建输入字段面板
-        JPanel namePanel = new JPanel(new BorderLayout(5, 5));
-        namePanel.add(new JLabel("Bill Name:"), BorderLayout.NORTH);
-        namePanel.add(nameField, BorderLayout.CENTER);
-        
-        JPanel amountPanel = new JPanel(new BorderLayout(5, 5));
-        amountPanel.add(new JLabel("Amount:"), BorderLayout.NORTH);
-        amountPanel.add(amountField, BorderLayout.CENTER);
-        
-        JPanel datePanel = new JPanel(new BorderLayout(5, 5));
-        datePanel.add(new JLabel("Due Date:"), BorderLayout.NORTH);
-        datePanel.add(dateChooser, BorderLayout.CENTER);
-        
-        JPanel methodPanel = new JPanel(new BorderLayout(5, 5));
-        methodPanel.add(new JLabel("Payment Method:"), BorderLayout.NORTH);
-        methodPanel.add(paymentMethodCombo, BorderLayout.CENTER);
-        
-        JPanel notificationPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        notificationPanel.add(emailCheck);
-        notificationPanel.add(pushCheck);
-        
-        // 添加间距
-        namePanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-        amountPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-        datePanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-        methodPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
-        
-        // 添加到主面板
-        panel.add(namePanel);
-        panel.add(amountPanel);
-        panel.add(datePanel);
-        panel.add(methodPanel);
-        panel.add(new JLabel("Notification:"));
-        panel.add(notificationPanel);
-        
-        // 显示对话框
-        int result = JOptionPane.showConfirmDialog(
-            this,
-            panel,
-            "Edit Bill",
-            JOptionPane.OK_CANCEL_OPTION,
-            JOptionPane.PLAIN_MESSAGE
-        );
-        
-        if (result == JOptionPane.OK_OPTION) {
-            try {
-                // 验证输入
-                String name = nameField.getText().trim();
-                if (name.isEmpty()) {
-                    showError("Please enter a bill name.");
-                    return;
-                }
-                
-                BigDecimal amount = new BigDecimal(amountField.getText().trim());
-                if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-                    showError("Please enter a valid amount greater than zero.");
-                    return;
-                }
-                
-                Date selectedDate = dateChooser.getDate();
-                if (selectedDate == null) {
-                    showError("Please select a due date.");
-                    return;
-                }
-                
-                LocalDate dueDate = selectedDate.toInstant()
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDate();
-                
-                String paymentMethod = (String) paymentMethodCombo.getSelectedItem();
-                
-                // 创建更新后的账单
-                Bill updatedBill = new Bill(
-                    bill.getId(),
-                    name,
-                    amount,
-                    dueDate,
-                    paymentMethod,
-                    emailCheck.isSelected(),
-                    pushCheck.isSelected()
-                );
-                
-                // 保存更新
-                billService.updateBill(updatedBill);
-                
-                // 刷新界面
-                refreshData();
-                
-                // 显示成功信息
-                showSuccess("Bill updated successfully!");
-                
-            } catch (NumberFormatException e) {
-                showError("Please enter a valid amount.");
-            }
-        }
+        // TODO: Implement edit functionality
+        showError("Edit functionality not yet implemented.");
     }
 
     private void deleteBill(Bill bill) {
@@ -515,24 +391,28 @@ public class BillsPanel extends JPanel {
         );
     }
 
+    // Custom renderer for status column
+    private class StatusColumnRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+            JTable table, Object value,
+            boolean isSelected, boolean hasFocus,
+            int row, int column
+        ) {
+            Component c = super.getTableCellRendererComponent(
+                table, value, isSelected, hasFocus, row, column);
+            
+            if (value instanceof JLabel) {
+                JLabel label = (JLabel) value;
+                c.setForeground(label.getForeground());
+            }
+            
+            return c;
+        }
+    }
+
     private void createAlertsPanel() {
         alertsPanel = new JPanel();
         updateAlertsPanel();
-    }
-
-    // 自定义按钮渲染器
-    private class ButtonRenderer extends JButton implements TableCellRenderer {
-        public ButtonRenderer(String text) {
-            setText(text);
-            setFocusPainted(false);
-            setBorderPainted(true);
-            setOpaque(true);
-        }
-        
-        @Override
-        public Component getTableCellRendererComponent(JTable table, Object value, 
-                boolean isSelected, boolean hasFocus, int row, int column) {
-            return this;
-        }
     }
 } 

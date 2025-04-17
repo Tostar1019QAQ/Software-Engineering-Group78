@@ -32,37 +32,6 @@ Date,Description,Amount,Category,Payment Method,Currency
 2025-04-07,Mobile Phone Bill,-98.00,Communication,Credit Card,CNY
 2025-04-08,Movie Tickets,-80.00,Entertainment,WeChat Pay,CNY
 2025-04-10,Taxi Ride,-35.50,Transportation,Alipay,CNY
-2025-04-11,Grocery Shopping at Walmart,-258.35,Shopping,Alipay,CNY
-2025-04-11,Electricity Bill,-125.50,Utilities,Bank Transfer,CNY
-2025-04-11,Grocery Shopping at Walmart,-258.35,Shopping,Alipay,CNY
-2025-04-11,Electricity Bill,-125.50,Utilities,Bank Transfer,CNY
 2025-04-12,Internet Bill,-199.00,Utilities,Bank Transfer,CNY
-2025-04-12,Lunch at KFC,-45.00,Food,WeChat Pay,CNY
-2025-04-12,Mobile Phone Bill,-98.00,Communication,Credit Card,CNY
-2025-04-12,Internet Bill,-199.00,Utilities,Bank Transfer,CNY
-2025-04-12,Lunch at KFC,-45.00,Food,WeChat Pay,CNY
-2025-04-12,Mobile Phone Bill,-98.00,Communication,Credit Card,CNY
-2025-04-13,Movie Tickets,-80.00,Entertainment,WeChat Pay,CNY
-2025-04-13,Taxi Ride,-35.50,Transportation,Alipay,CNY
-2025-04-13,Movie Tickets,-80.00,Entertainment,WeChat Pay,CNY
-2025-04-13,Taxi Ride,-35.50,Transportation,Alipay,CNY
-2025-04-14,Internet Bill,-199.00,Utilities,Bank Transfer,CNY
-2025-04-14,Dinner with Friends,-168.00,Food,Credit Card,CNY
-2025-04-14,Salary Income,15500.00,Income,Bank Transfer,CNY
-2025-04-14,Internet Bill,-199.00,Utilities,Bank Transfer,CNY
-2025-04-14,Dinner with Friends,-168.00,Food,Credit Card,CNY
-2025-04-14,Salary Income,15500.00,Income,Bank Transfer,CNY
-2025-04-15,Gym Membership,-299.00,Health,Debit Card,CNY
-2025-04-15,Bus Card Recharge,-100.00,Transportation,WeChat Pay,CNY
-2025-04-15,Gym Membership,-299.00,Health,Debit Card,CNY
-2025-04-15,Bus Card Recharge,-100.00,Transportation,WeChat Pay,CNY
-2025-04-16,Supermarket Shopping,-345.60,Shopping,Alipay,CNY
-2025-04-16,Coffee Shop,-25.00,Food,WeChat Pay,CNY
-2025-04-16,Freelance Payment,1800.00,Income,Bank Transfer,CNY
-2025-04-16,Supermarket Shopping,-345.60,Shopping,Alipay,CNY
-2025-04-16,Coffee Shop,-25.00,Food,WeChat Pay,CNY
-2025-04-16,Freelance Payment,1800.00,Income,Bank Transfer,CNY
-2025-04-17,Book Purchase,-89.00,Education,Credit Card,CNY
-2025-04-17,Water Bill,-75.00,Utilities,Bank Transfer,CNY
-2025-04-17,Book Purchase,-89.00,Education,Credit Card,CNY
-2025-04-17,Water Bill,-75.00,Utilities,Bank Transfer,CNY
+2025-04-15,Dinner with Friends,-168.00,Food,Credit Card,CNY
+2025-04-17,Gym Membership,-299.00,Health,Debit Card,CNY

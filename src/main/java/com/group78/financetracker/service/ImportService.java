@@ -57,29 +57,15 @@ public class ImportService {
 
     private void loadDefaultTransactions() {
         try {
-            logger.info("Loading default transactions from: {}", DEFAULT_DATA_FILE);
             File defaultFile = new File(DEFAULT_DATA_FILE);
             if (defaultFile.exists()) {
-                logger.info("Default transactions file exists, loading...");
-                // Clear existing transactions before loading
-                transactions.clear();
-                
                 List<Transaction> defaultTransactions = importFromCSV(DEFAULT_DATA_FILE);
                 logger.info("Loaded {} default transactions", defaultTransactions.size());
-                
-                // Print first few transactions for debugging
-                int count = 0;
-                for (Transaction t : transactions) {
-                    if (count++ < 5) {
-                        logger.debug("Sample transaction: {} - {} - {}", 
-                                   t.getDescription(), t.getAmount(), t.getDateTime().toLocalDate());
-                    }
-                }
             } else {
                 logger.warn("Default transactions file not found: {}", DEFAULT_DATA_FILE);
             }
         } catch (IOException e) {
-            logger.error("Failed to load default transactions: {}", e.getMessage(), e);
+            logger.error("Failed to load default transactions", e);
         }
     }
 

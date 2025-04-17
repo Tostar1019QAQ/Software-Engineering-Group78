@@ -2,17 +2,11 @@ package com.group78.financetracker.ui;
 
 import com.group78.financetracker.service.ImportService;
 import com.group78.financetracker.model.Transaction;
-import com.group78.financetracker.ui.DashboardPanel;
-import com.group78.financetracker.ui.MainFrame;
-import com.group78.financetracker.service.DashboardService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.awt.Window;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.dnd.*;
@@ -21,7 +15,6 @@ import java.util.List;
 import java.util.TooManyListenersException;
 
 public class ImportPanel extends JPanel {
-    private static final Logger logger = LoggerFactory.getLogger(ImportPanel.class);
     private final CardLayout cardLayout;
     private final JPanel contentPanel;
     private final ImportService importService;
@@ -278,29 +271,8 @@ public class ImportPanel extends JPanel {
             updatePreview(transactions);
             statusLabel.setText("Data imported successfully: " + transactions.size() + " transactions");
             
-            // Refresh the dashboard 
+            // Refresh the dashboard
             updateDashboard();
-            
-            // Show success message with option to view dashboard
-            int choice = JOptionPane.showConfirmDialog(
-                this,
-                "Data imported successfully! Would you like to view the updated dashboard?",
-                "Import Successful",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.INFORMATION_MESSAGE
-            );
-            
-            if (choice == JOptionPane.YES_OPTION) {
-                // Switch to dashboard and ensure it's refreshed
-                JOptionPane.showMessageDialog(
-                this,
-                "Please click \"refresh\" button to view the updated dashboard",
-                "Import Successful",
-                JOptionPane.INFORMATION_MESSAGE
-            );
-                cardLayout.show(contentPanel, "Dashboard");
-                forceRefreshDashboard();
-            }
             
         } catch (Exception e) {
             e.printStackTrace();
@@ -327,60 +299,11 @@ public class ImportPanel extends JPanel {
     }
 
     private void updateDashboard() {
-        logger.debug("尝试更新仪表板...");
-        
-        // Try to find MainFrame from parent components
-        Container parent = this.getParent();
-        while (parent != null && !(parent instanceof MainFrame)) {
-            parent = parent.getParent();
-        }
-        
-        if (parent instanceof MainFrame) {
-            logger.debug("找到了MainFrame，尝试获取DashboardPanel");
-            MainFrame mainFrame = (MainFrame) parent;
-            
-            try {
-                Component[] components = mainFrame.getContentPane().getComponents();
-                for (Component component : components) {
-                    if (component instanceof DashboardPanel) {
-                        logger.debug("找到DashboardPanel，进行更新");
-                        ((DashboardPanel) component).updateDashboard();
-                        return;
-                    }
-                }
-                logger.debug("dashboardPanel不是DashboardPanel类型");
-            } catch (Exception e) {
-                logger.error("无法访问DashboardPanel: {}", e.getMessage(), e);
-            }
-        } else {
-            logger.debug("未找到MainFrame，使用备用方法");
-            forceRefreshDashboard();
-        }
-    }
-    
-    private void forceRefreshDashboard() {
-        // Try to get Dashboard directly from MainFrame
-        Window window = SwingUtilities.getWindowAncestor(this);
-        if (window instanceof JFrame) {
-            logger.debug("Found parent JFrame");
-            Container contentPane = ((JFrame) window).getContentPane();
-            forceRefreshComponents(contentPane);
-        } else {
-            logger.debug("Could not find parent JFrame");
-        }
-    }
-    
-    private void forceRefreshComponents(Container container) {
-        Component[] components = container.getComponents();
+        Component[] components = contentPanel.getComponents();
         for (Component component : components) {
-            logger.debug("Searching in component: {}", component.getClass().getName());
-            
             if (component instanceof DashboardPanel) {
-                logger.debug("Found DashboardPanel through recursive search");
                 ((DashboardPanel) component).updateDashboard();
-                return;
-            } else if (component instanceof Container) {
-                forceRefreshComponents((Container) component);
+                break;
             }
         }
     }

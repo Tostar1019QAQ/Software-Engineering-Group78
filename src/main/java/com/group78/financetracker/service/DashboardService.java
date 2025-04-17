@@ -2,8 +2,6 @@ package com.group78.financetracker.service;
 
 import com.group78.financetracker.model.Transaction;
 import com.group78.financetracker.model.TransactionType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -12,15 +10,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class DashboardService {
-    private static final Logger logger = LoggerFactory.getLogger(DashboardService.class);
     private final ImportService importService;
 
     public DashboardService() {
         this.importService = new ImportService();
-    }
-
-    public ImportService getImportService() {
-        return importService;
     }
 
     public List<Transaction> getRecentTransactions() {
@@ -47,39 +40,23 @@ public class DashboardService {
     }
 
     public Map<LocalDate, BigDecimal> getDailySpending(int days) {
-        logger.debug("Fetching daily spending for last {} days", days);
         List<Transaction> allTransactions = importService.getAllTransactions();
-        logger.debug("Total transactions: {}", allTransactions.size());
-        
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusDays(days - 1);
-        
-        logger.debug("Date range: {} to {}", startDate, endDate);
         
         Map<LocalDate, BigDecimal> dailySpending = new TreeMap<>();
         
         // Initialize all dates with zero
         for (int i = 0; i < days; i++) {
-            LocalDate date = startDate.plusDays(i);
-            dailySpending.put(date, BigDecimal.ZERO);
-            logger.trace("Initialized date: {}", date);
+            dailySpending.put(startDate.plusDays(i), BigDecimal.ZERO);
         }
 
         // Sum up transactions for each day
         for (Transaction transaction : allTransactions) {
-            LocalDate date = transaction.getDateTime().toLocalDate();
-            
-            // Only process EXPENSE transactions
             if (transaction.getType() == TransactionType.EXPENSE) {
-                logger.trace("Checking expense transaction: {} - {} - {}", 
-                           date, transaction.getAmount(), transaction.getDescription());
-                
-                // Check if the date is within our range
+                LocalDate date = transaction.getDateTime().toLocalDate();
                 if (!date.isBefore(startDate) && !date.isAfter(endDate)) {
-                    BigDecimal currentAmount = dailySpending.get(date);
-                    BigDecimal newAmount = currentAmount.add(transaction.getAmount());
-                    dailySpending.put(date, newAmount);
-                    logger.trace("Added to daily spending: {}, now: {}", date, newAmount);
+                    dailySpending.merge(date, transaction.getAmount(), BigDecimal::add);
                 }
             }
         }
@@ -105,48 +82,5 @@ public class DashboardService {
 
     public BigDecimal getBalance() {
         return getTotalIncome().subtract(getTotalExpenses());
-    }
-
-    // Total budget management
-    private BigDecimal totalBudget = BigDecimal.ZERO;
-    private LocalDate budgetStartDate;
-    private LocalDate budgetEndDate;
-    
-    /**
-     * Updates the total budget and budget period
-     * @param totalBudget The total budget amount
-     * @param startDate The start date of the budget period
-     * @param endDate The end date of the budget period
-     */
-    public void updateTotalBudget(BigDecimal totalBudget, LocalDate startDate, LocalDate endDate) {
-        logger.info("Updating total budget: amount={}, period={} to {}", 
-                   totalBudget, startDate, endDate);
-        this.totalBudget = totalBudget;
-        this.budgetStartDate = startDate;
-        this.budgetEndDate = endDate;
-    }
-    
-    /**
-     * Gets the total budget for the current period
-     * @return The total budget amount
-     */
-    public BigDecimal getTotalBudget() {
-        return totalBudget;
-    }
-    
-    /**
-     * Gets the budget start date
-     * @return The budget start date
-     */
-    public LocalDate getBudgetStartDate() {
-        return budgetStartDate;
-    }
-    
-    /**
-     * Gets the budget end date
-     * @return The budget end date
-     */
-    public LocalDate getBudgetEndDate() {
-        return budgetEndDate;
     }
 } 
