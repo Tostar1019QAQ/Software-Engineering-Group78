@@ -6,13 +6,12 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
@@ -64,7 +63,7 @@ public class ImportService {
                 // Clear existing transactions before loading
                 transactions.clear();
                 
-                List<Transaction> defaultTransactions = importFromCSV(DEFAULT_DATA_FILE);
+                List<Transaction> defaultTransactions = importFromFile(defaultFile);
                 logger.info("Loaded {} default transactions", defaultTransactions.size());
                 
                 // Print first few transactions for debugging
@@ -108,6 +107,182 @@ public class ImportService {
 
     public void reloadDefaultData() {
         clearTransactions();
+    }
+
+    /**
+     * Determines the file type and imports accordingly
+     * @param file File to import
+     * @return List of imported transactions
+     * @throws IOException If an error occurs during import
+     */
+    public List<Transaction> importFromFile(File file) throws IOException {
+        String fileName = file.getName().toLowerCase();
+        if (fileName.endsWith(".csv")) {
+            return importFromCSV(file.getAbsolutePath());
+        } else if (fileName.endsWith(".xlsx")) {
+            return importFromXLSX(file.getAbsolutePath());
+        } else {
+            throw new IOException("Unsupported file format. Please use CSV or XLSX files.");
+        }
+    }
+
+    /**
+     * Import transactions from XLSX file
+     * @param filePath Path to the XLSX file
+     * @return List of imported transactions
+     * @throws IOException If an error occurs during import
+     */
+    public List<Transaction> importFromXLSX(String filePath) throws IOException {
+        List<Transaction> importedTransactions = new ArrayList<>();
+        importErrors.clear();
+        
+        try (FileInputStream fis = new FileInputStream(filePath);
+             Workbook workbook = new XSSFWorkbook(fis)) {
+            
+            Sheet sheet = workbook.getSheetAt(0);
+            
+            // Get header row to determine columns
+            Row headerRow = sheet.getRow(0);
+            if (headerRow == null) {
+                throw new IOException("Excel file does not contain a header row");
+            }
+            
+            // Map column indices
+            int dateColIdx = -1;
+            int descColIdx = -1;
+            int amountColIdx = -1;
+            int categoryColIdx = -1;
+            int paymentMethodColIdx = -1;
+            int currencyColIdx = -1;
+            
+            for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+                Cell cell = headerRow.getCell(i);
+                if (cell == null) continue;
+                
+                String headerName = cell.getStringCellValue().trim().toLowerCase();
+                switch (headerName) {
+                    case "date": dateColIdx = i; break;
+                    case "description": descColIdx = i; break;
+                    case "amount": amountColIdx = i; break;
+                    case "category": categoryColIdx = i; break;
+                    case "payment method": paymentMethodColIdx = i; break;
+                    case "currency": currencyColIdx = i; break;
+                }
+            }
+            
+            // Validate required columns exist
+            if (dateColIdx == -1 || descColIdx == -1 || amountColIdx == -1 || 
+                categoryColIdx == -1 || paymentMethodColIdx == -1) {
+                throw new IOException("Excel file missing required columns. Required columns: Date, Description, Amount, Category, Payment Method");
+            }
+            
+            // Process data rows
+            List<Transaction> batch = new ArrayList<>();
+            int rowNum = 1; // Start from second row (after header)
+            
+            for (Row row : sheet) {
+                if (row.getRowNum() == 0) continue; // Skip header
+                
+                try {
+                    // Extract cell values (handle nulls)
+                    String date = getCellValueAsString(row.getCell(dateColIdx));
+                    String description = getCellValueAsString(row.getCell(descColIdx));
+                    String amount = getCellValueAsString(row.getCell(amountColIdx));
+                    String category = getCellValueAsString(row.getCell(categoryColIdx));
+                    String paymentMethod = getCellValueAsString(row.getCell(paymentMethodColIdx));
+                    String currency = currencyColIdx != -1 ? 
+                        getCellValueAsString(row.getCell(currencyColIdx)) : "CNY";
+                    
+                    // Validate values
+                    if (date.isEmpty() || description.isEmpty() || amount.isEmpty() || 
+                        category.isEmpty() || paymentMethod.isEmpty()) {
+                        throw new IllegalArgumentException("Required fields cannot be empty");
+                    }
+                    
+                    // Parse date
+                    LocalDateTime dateTime;
+                    try {
+                        LocalDate localDate = LocalDate.parse(date, dateFormatter);
+                        dateTime = localDate.atStartOfDay();
+                    } catch (DateTimeParseException e) {
+                        throw new IllegalArgumentException("Invalid date format, should be: " + dateFormatter.toString());
+                    }
+                    
+                    // Parse amount and determine transaction type
+                    BigDecimal amountValue;
+                    try {
+                        amountValue = new BigDecimal(amount.replace(",", ""));
+                    } catch (NumberFormatException e) {
+                        throw new IllegalArgumentException("Invalid amount format");
+                    }
+                    
+                    TransactionType type = amountValue.compareTo(BigDecimal.ZERO) < 0 ?
+                        TransactionType.EXPENSE : TransactionType.INCOME;
+                    
+                    // Create transaction
+                    Transaction transaction = new Transaction(
+                        UUID.randomUUID().toString(),
+                        amountValue.abs(),
+                        category.trim(),
+                        description.trim(),
+                        dateTime,
+                        type,
+                        paymentMethod.trim(),
+                        currency.trim()
+                    );
+                    
+                    batch.add(transaction);
+                    
+                    if (batch.size() >= BATCH_SIZE) {
+                        importedTransactions.addAll(batch);
+                        transactions.addAll(batch);
+                        batch.clear();
+                    }
+                } catch (Exception e) {
+                    String errorMessage = String.format("Row %d: %s", rowNum, e.getMessage());
+                    importErrors.add(new ImportError(rowNum, errorMessage));
+                    logger.error(errorMessage, e);
+                }
+                
+                rowNum++;
+            }
+            
+            // Process the last batch
+            if (!batch.isEmpty()) {
+                importedTransactions.addAll(batch);
+                transactions.addAll(batch);
+            }
+            
+            // Save the combined data
+            saveTransactionsToFile();
+        }
+        
+        return importedTransactions;
+    }
+    
+    /**
+     * Helper method to extract cell value as string, handling different cell types
+     */
+    private String getCellValueAsString(Cell cell) {
+        if (cell == null) return "";
+        
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue();
+            case NUMERIC:
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    return dateFormatter.format(cell.getLocalDateTimeCellValue().toLocalDate());
+                } else {
+                    // Avoid scientific notation
+                    return BigDecimal.valueOf(cell.getNumericCellValue()).toPlainString();
+                }
+            case BOOLEAN:
+                return Boolean.toString(cell.getBooleanCellValue());
+            case FORMULA:
+                return cell.getCellFormula();
+            default:
+                return "";
+        }
     }
 
     public List<Transaction> importFromCSV(String filePath) throws IOException {
