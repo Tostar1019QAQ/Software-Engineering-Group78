@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
+import javax.swing.text.html.HTMLEditorKit;
+import javax.swing.text.html.StyleSheet;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.util.List;
@@ -20,7 +22,7 @@ public class AIPanel extends JPanel {
     private final AIService aiService;
     private final TransactionService transactionService;
     
-    private JTextArea resultTextArea;
+    private JEditorPane resultPane;
     private JButton analyzeButton;
     private JLabel statusLabel;
     private JTextField apiKeyField;
@@ -39,12 +41,34 @@ public class AIPanel extends JPanel {
     }
     
     private void initComponents() {
-        // Results display area
-        resultTextArea = new JTextArea();
-        resultTextArea.setEditable(false);
-        resultTextArea.setLineWrap(true);
-        resultTextArea.setWrapStyleWord(true);
-        resultTextArea.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        // Results display area with HTML support
+        resultPane = new JEditorPane();
+        resultPane.setEditable(false);
+        resultPane.setContentType("text/html");
+        
+        // Configure HTML styling
+        HTMLEditorKit kit = new HTMLEditorKit();
+        resultPane.setEditorKit(kit);
+        
+        // Create and set up a stylesheet
+        StyleSheet styleSheet = kit.getStyleSheet();
+        styleSheet.addRule("body {font-family: 'Segoe UI', Arial, sans-serif; font-size: 16px; margin: 10px;}");
+        styleSheet.addRule("h1 {color: #2962FF; font-size: 24px; margin-top: 20px; margin-bottom: 10px;}");
+        styleSheet.addRule("h2 {color: #0277BD; font-size: 22px; margin-top: 15px; margin-bottom: 8px;}");
+        styleSheet.addRule("h3 {color: #0288D1; font-size: 20px; font-weight: bold; margin-top: 12px; margin-bottom: 6px;}");
+        styleSheet.addRule("p {margin-top: 8px; margin-bottom: 8px; font-size: 16px;}");
+        styleSheet.addRule(".highlight {background-color: #E1F5FE; padding: 8px; border-left: 3px solid #0288D1; font-size: 16px;}");
+        styleSheet.addRule(".expense {color: #D32F2F; font-size: 16px;}");
+        styleSheet.addRule(".income {color: #388E3C; font-size: 16px;}");
+        styleSheet.addRule("table {border-collapse: collapse; width: 100%; font-size: 16px;}");
+        styleSheet.addRule("th {background-color: #E3F2FD; padding: 10px; text-align: left; border-bottom: 2px solid #90CAF9; font-size: 18px;}");
+        styleSheet.addRule("td {padding: 8px; border-bottom: 1px solid #E0E0E0; font-size: 16px;}");
+        styleSheet.addRule("tr:nth-child(even) {background-color: #F5F5F5;}");
+        
+        // Initialize with welcome message
+        resultPane.setText("<html><body><h1>AI Financial Analysis</h1>" +
+                "<p>Select an analysis type and click 'Start Analysis' to analyze your transaction data.</p>" +
+                "</body></html>");
         
         // Analysis type selection
         analysisTypeComboBox = new JComboBox<>(new String[]{
@@ -99,7 +123,7 @@ public class AIPanel extends JPanel {
         controlPanel.add(statusLabel, BorderLayout.SOUTH);
         
         // Results area
-        JScrollPane scrollPane = new JScrollPane(resultTextArea);
+        JScrollPane scrollPane = new JScrollPane(resultPane);
         scrollPane.setBorder(BorderFactory.createTitledBorder(
             BorderFactory.createEtchedBorder(), 
             "Analysis Results", 
@@ -151,7 +175,7 @@ public class AIPanel extends JPanel {
         analyzeButton.setEnabled(false);
         statusLabel.setText("Analyzing...");
         statusLabel.setForeground(new Color(0, 102, 204));
-        resultTextArea.setText("Processing your transaction data, please wait...");
+        resultPane.setText("<html><body><h2>Processing your transaction data, please wait...</h2></body></html>");
         
         // Get selected analysis type
         int selectedIndex = analysisTypeComboBox.getSelectedIndex();
@@ -162,7 +186,8 @@ public class AIPanel extends JPanel {
             try {
                 if (selectedIndex == 0) {
                     // Smart financial analysis
-                    return aiService.generateFinancialInsights(transactions);
+                    String insights = aiService.generateFinancialInsights(transactions);
+                    return formatAIResponse(insights);
                 } else if (selectedIndex == 1) {
                     // Spending pattern analysis
                     return formatAnalysisResults(aiService.analyzeSpendingPattern(transactions));
@@ -172,12 +197,14 @@ public class AIPanel extends JPanel {
                 }
             } catch (Exception ex) {
                 logger.error("Analysis error: {}", ex.getMessage(), ex);
-                return "Error during analysis: " + ex.getMessage();
+                return "<html><body><h1>Error</h1><p class='highlight'>Error during analysis: " 
+                    + ex.getMessage() + "</p></body></html>";
             }
         }).thenAccept(result -> {
             // Update UI in EDT
             SwingUtilities.invokeLater(() -> {
-                resultTextArea.setText(result);
+                resultPane.setText(result);
+                resultPane.setCaretPosition(0); // Scroll to top
                 analyzeButton.setEnabled(true);
                 statusLabel.setText("Analysis complete");
                 statusLabel.setForeground(new Color(0, 153, 0));
@@ -186,23 +213,57 @@ public class AIPanel extends JPanel {
     }
     
     /**
-     * Format analysis results as readable text
+     * Format the AI response from DeepSeek into HTML
+     */
+    private String formatAIResponse(String aiResponse) {
+        if (aiResponse == null || aiResponse.isEmpty()) {
+            return "<html><body><p>No insights available</p></body></html>";
+        }
+        
+        // Replace line breaks with HTML breaks
+        String htmlText = aiResponse.replace("\n\n", "</p><p>")
+                                  .replace("\n", "<br/>")
+                                  .replace("**", ""); // Remove markdown bold markers
+        
+        // Add headers for better formatting (heuristic detection)
+        if (!htmlText.contains("<h1>") && !htmlText.contains("<h2>")) {
+            // Simple heuristic to identify potential headers
+            htmlText = htmlText.replaceAll("(?m)^([A-Z][A-Za-z0-9 ]+:)<br/>", "<h2>$1</h2>");
+            htmlText = htmlText.replaceAll("(?m)<p>([A-Z][A-Za-z0-9 ]+:)</p>", "<h2>$1</h2><p>");
+        }
+        
+        // Format bullet points (if they exist)
+        htmlText = htmlText.replace("• ", "&#8226; ");
+        htmlText = htmlText.replace("- ", "&#8226; ");
+        
+        // Complete HTML structure
+        return "<html><body><h1>Financial Insights</h1>" + 
+               "<p>" + htmlText + "</p>" +
+               "</body></html>";
+    }
+    
+    /**
+     * Format analysis results as HTML for better readability
      */
     private String formatAnalysisResults(java.util.Map<String, Object> analysis) {
         StringBuilder sb = new StringBuilder();
-        sb.append("==== SPENDING PATTERN ANALYSIS ====\n\n");
+        sb.append("<html><body>");
+        sb.append("<h1>SPENDING PATTERN ANALYSIS</h1>");
         
         // Total spent
-        sb.append("Total Spent: $").append(analysis.get("totalSpent")).append("\n\n");
+        sb.append("<p><b>Total Spent:</b> <span class='expense'>$").append(analysis.get("totalSpent")).append("</span></p>");
         
         // Daily average
-        sb.append("Daily Average: $").append(analysis.get("dailyAverage")).append("\n\n");
+        sb.append("<p><b>Daily Average:</b> <span>$").append(analysis.get("dailyAverage")).append("</span></p>");
         
         // Top category
-        sb.append("Top Spending Category: ").append(analysis.get("topCategory")).append("\n\n");
+        sb.append("<p><b>Top Spending Category:</b> <span class='highlight'>").append(analysis.get("topCategory")).append("</span></p>");
         
-        // Category spending
-        sb.append("=== SPENDING BY CATEGORY ===\n");
+        // Category spending - Create a table
+        sb.append("<h2>SPENDING BY CATEGORY</h2>");
+        sb.append("<table>");
+        sb.append("<tr><th>Category</th><th>Amount</th></tr>");
+        
         @SuppressWarnings("unchecked")
         java.util.Map<String, java.math.BigDecimal> categoryTotals = 
             (java.util.Map<String, java.math.BigDecimal>) analysis.get("categoryTotals");
@@ -211,26 +272,35 @@ public class AIPanel extends JPanel {
             categoryTotals.entrySet().stream()
                 .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
                 .forEach(entry -> 
-                    sb.append(entry.getKey()).append(": $").append(entry.getValue()).append("\n")
+                    sb.append("<tr><td>").append(entry.getKey()).append("</td><td>$")
+                      .append(entry.getValue()).append("</td></tr>")
                 );
         }
+        sb.append("</table>");
         
         // Statistics
-        sb.append("\n=== STATISTICS ===\n");
-        sb.append("Mean: $").append(String.format("%.2f", analysis.get("mean"))).append("\n");
-        sb.append("Median: $").append(String.format("%.2f", analysis.get("median"))).append("\n");
-        sb.append("Standard Deviation: $").append(String.format("%.2f", analysis.get("standardDeviation"))).append("\n");
+        sb.append("<h2>STATISTICS</h2>");
+        sb.append("<table>");
+        sb.append("<tr><td>Mean:</td><td>$").append(String.format("%.2f", analysis.get("mean"))).append("</td></tr>");
+        sb.append("<tr><td>Median:</td><td>$").append(String.format("%.2f", analysis.get("median"))).append("</td></tr>");
+        sb.append("<tr><td>Standard Deviation:</td><td>$").append(String.format("%.2f", analysis.get("standardDeviation"))).append("</td></tr>");
+        sb.append("</table>");
         
+        sb.append("</body></html>");
         return sb.toString();
     }
     
     /**
-     * Generate categorization examples
+     * Generate categorization examples with HTML formatting
      */
     private String generateCategorizationExamples() {
         StringBuilder sb = new StringBuilder();
-        sb.append("==== AUTO-CATEGORIZATION EXAMPLES ====\n\n");
-        sb.append("Here are examples of transaction descriptions and their automated categorization:\n\n");
+        sb.append("<html><body>");
+        sb.append("<h1>AUTO-CATEGORIZATION EXAMPLES</h1>");
+        sb.append("<p>Here are examples of transaction descriptions and their automated categorization:</p>");
+        
+        sb.append("<table>");
+        sb.append("<tr><th>Description</th><th>Category</th></tr>");
         
         String[][] examples = {
             {"Lunch at McDonald's", aiService.categorizeTransaction("Lunch at McDonald's")},
@@ -246,11 +316,13 @@ public class AIPanel extends JPanel {
         };
         
         for (String[] example : examples) {
-            sb.append("Description: \"").append(example[0]).append("\"\n");
-            sb.append("Category: ").append(example[1]).append("\n\n");
+            sb.append("<tr><td>\"").append(example[0]).append("\"</td>");
+            sb.append("<td>").append(example[1]).append("</td></tr>");
         }
         
-        sb.append("You can use the DeepSeek API for more accurate transaction categorization.");
+        sb.append("</table>");
+        sb.append("<p class='highlight'>You can use the DeepSeek API for more accurate transaction categorization.</p>");
+        sb.append("</body></html>");
         
         return sb.toString();
     }
