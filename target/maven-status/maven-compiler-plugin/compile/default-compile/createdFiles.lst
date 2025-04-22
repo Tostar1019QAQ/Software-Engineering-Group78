@@ -26,6 +26,7 @@ com\group78\financetracker\ui\DashboardPanel.class
 com\group78\financetracker\ui\BillsPanel.class
 com\group78\financetracker\ui\BudgetPanel$1.class
 com\group78\financetracker\service\BillService.class
+com\group78\financetracker\service\ImportService$1.class
 com\group78\financetracker\ui\BillsPanel$ButtonRenderer.class
 com\group78\financetracker\ui\ImportPanel.class
 com\group78\financetracker\FinanceTrackerApp.class

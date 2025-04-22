@@ -55,7 +55,7 @@ public class MainFrame extends JFrame {
         budgetPanel = new BudgetPanel(cardLayout, contentPanel);
         billsPanel = new BillsPanel(cardLayout, contentPanel);
         importPanel = new ImportPanel(cardLayout, contentPanel);  // Use the new ImportPanel
-        aiAnalysisPanel = new AIPanel(aiService, transactionService); // 使用新的AIPanel
+        aiAnalysisPanel = new AIPanel(aiService, transactionService); // Use the new AIPanel
         
         // Add all panels to card layout
         contentPanel.add(dashboardPanel, "Dashboard");

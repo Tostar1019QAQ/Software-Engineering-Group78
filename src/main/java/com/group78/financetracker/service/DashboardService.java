@@ -87,6 +87,45 @@ public class DashboardService {
         return dailySpending;
     }
 
+    /**
+     * 获取指定天数内的每日收入
+     * @param days 天数
+     * @return 日期到收入金额的映射
+     */
+    public Map<LocalDate, BigDecimal> getDailyIncome(int days) {
+        logger.debug("Fetching daily income for last {} days", days);
+        List<Transaction> allTransactions = importService.getAllTransactions();
+        
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(days - 1);
+        
+        Map<LocalDate, BigDecimal> dailyIncome = new TreeMap<>();
+        
+        // Initialize all dates with zero
+        for (int i = 0; i < days; i++) {
+            LocalDate date = startDate.plusDays(i);
+            dailyIncome.put(date, BigDecimal.ZERO);
+        }
+
+        // Sum up transactions for each day
+        for (Transaction transaction : allTransactions) {
+            LocalDate date = transaction.getDateTime().toLocalDate();
+            
+            // Only process INCOME transactions
+            if (transaction.getType() == TransactionType.INCOME) {
+                // Check if the date is within our range
+                if (!date.isBefore(startDate) && !date.isAfter(endDate)) {
+                    BigDecimal currentAmount = dailyIncome.get(date);
+                    BigDecimal newAmount = currentAmount.add(transaction.getAmount());
+                    dailyIncome.put(date, newAmount);
+                    logger.trace("Added to daily income: {}, now: {}", date, newAmount);
+                }
+            }
+        }
+
+        return dailyIncome;
+    }
+
     public BigDecimal getTotalExpenses() {
         List<Transaction> allTransactions = importService.getAllTransactions();
         return allTransactions.stream()

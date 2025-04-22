@@ -533,7 +533,7 @@ public class ImportPanel extends JPanel {
     }
 
     private void updateDashboard() {
-        logger.debug("尝试更新仪表板...");
+        logger.debug("Attempting to update dashboard...");
         
         // Try to find MainFrame from parent components
         Container parent = this.getParent();
@@ -542,24 +542,24 @@ public class ImportPanel extends JPanel {
         }
         
         if (parent instanceof MainFrame) {
-            logger.debug("找到了MainFrame，尝试获取DashboardPanel");
+            logger.debug("Found MainFrame, trying to get DashboardPanel");
             MainFrame mainFrame = (MainFrame) parent;
             
             try {
                 Component[] components = mainFrame.getContentPane().getComponents();
                 for (Component component : components) {
                     if (component instanceof DashboardPanel) {
-                        logger.debug("找到DashboardPanel，进行更新");
+                        logger.debug("Found DashboardPanel, performing update");
                         ((DashboardPanel) component).updateDashboard();
                         return;
                     }
                 }
-                logger.debug("dashboardPanel不是DashboardPanel类型");
+                logger.debug("dashboardPanel is not a DashboardPanel type");
             } catch (Exception e) {
-                logger.error("无法访问DashboardPanel: {}", e.getMessage(), e);
+                logger.error("Unable to access DashboardPanel: {}", e.getMessage(), e);
             }
         } else {
-            logger.debug("未找到MainFrame，使用备用方法");
+            logger.debug("MainFrame not found, using backup method");
             forceRefreshDashboard();
         }
     }
