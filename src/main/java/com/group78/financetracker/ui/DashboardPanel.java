@@ -126,6 +126,9 @@ public class DashboardPanel extends JPanel {
         // Reload bills data
         billService.reloadBills();
         
+        // Load bills data from CSV file
+        loadBillsDataFromFile();
+        
         // Update all panels
         updateDashboard();
     }
@@ -177,6 +180,29 @@ public class DashboardPanel extends JPanel {
             
         } catch (Exception e) {
             logger.error("Failed to load budget data: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Loads bill data from the bills.csv file
+     */
+    private void loadBillsDataFromFile() {
+        try {
+            File billsFile = new File("data/bills.csv");
+            if (!billsFile.exists()) {
+                logger.info("No bills data file found.");
+                return;
+            }
+            
+            logger.info("Loading bills data from CSV file: {}", billsFile.getAbsolutePath());
+            
+            // Notify BillService to reload bill data
+            billService.reloadBills();
+            
+            logger.info("Bills data loaded successfully");
+            
+        } catch (Exception e) {
+            logger.error("Failed to load bills data: {}", e.getMessage(), e);
         }
     }
 
@@ -239,7 +265,7 @@ public class DashboardPanel extends JPanel {
         distributionChartPanel.setPreferredSize(new Dimension(400, 300));
         
         // Create containers for charts
-        JPanel spendingContainer = createChartContainer("Last 7 Days Spending", spendingChartPanel);
+        JPanel spendingContainer = createChartContainer("Last 7 Days Income & Expenses", spendingChartPanel);
         JPanel distributionContainer = createChartContainer("Expense Distribution", distributionChartPanel);
 
         panel.add(spendingContainer);
@@ -268,7 +294,9 @@ public class DashboardPanel extends JPanel {
         
         // Add placeholder data (will be updated later)
         for (int i = 6; i >= 0; i--) {
-            dataset.addValue(0, "Expenses", LocalDate.now().minusDays(i).format(DATE_FORMATTER));
+            String dateLabel = LocalDate.now().minusDays(i).format(DATE_FORMATTER);
+            dataset.addValue(0, "Expenses", dateLabel);
+            dataset.addValue(0, "Income", dateLabel);
         }
         
         JFreeChart chart = ChartFactory.createBarChart(
@@ -277,7 +305,7 @@ public class DashboardPanel extends JPanel {
             "Amount (¥)",              // Y-Axis label
             dataset,                   // Dataset
             PlotOrientation.VERTICAL,  // Orientation
-            false,                     // Include legend
+            true,                      // Include legend
             true,                      // Include tooltips
             false                      // Include URLs
         );
@@ -285,7 +313,8 @@ public class DashboardPanel extends JPanel {
         // Customize chart
         CategoryPlot plot = chart.getCategoryPlot();
         BarRenderer renderer = (BarRenderer) plot.getRenderer();
-        renderer.setSeriesPaint(0, new Color(75, 192, 192));
+        renderer.setSeriesPaint(0, new Color(255, 99, 132)); // Expenses in red
+        renderer.setSeriesPaint(1, new Color(75, 192, 192)); // Income in green
         
         return chart;
     }
@@ -312,28 +341,18 @@ public class DashboardPanel extends JPanel {
     }
 
     private JPanel createActionPanel() {
-        JPanel panel = new JPanel(new GridLayout(1, 2, 20, 0));
+        JPanel panel = new JPanel(new GridLayout(1, 1, 20, 0));
         panel.setOpaque(false);
 
-        // Add AI analysis button
-        JButton aiButton = createActionButton("AI Smart Analysis", "🤖");
-        aiButton.setBackground(PRIMARY_COLOR);
-        aiButton.setForeground(Color.WHITE);
+        // Create an informational label instead of buttons
+        JLabel infoLabel = new JLabel("View bills and transactions to understand your financial status");
+        infoLabel.setForeground(new Color(102, 102, 102));
+        infoLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        infoLabel.setFont(new Font("Segoe UI", Font.ITALIC, 12));
         
-        panel.add(aiButton);
-        panel.add(Box.createHorizontalStrut(1)); // Placeholder
+        panel.add(infoLabel);
 
         return panel;
-    }
-
-    private JButton createActionButton(String text, String icon) {
-        JButton button = new JButton(icon + " " + text);
-        button.setFont(button.getFont().deriveFont(14f));
-        button.setFocusPainted(false);
-        button.setBorderPainted(false);
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        
-        return button;
     }
     
     public void updateDashboard() {
@@ -345,7 +364,15 @@ public class DashboardPanel extends JPanel {
     private void updateSummaryInfo() {
         // Get real data
         BigDecimal totalExpenses = dashboardService.getTotalExpenses();
-        int pendingBillsCount = billService.getUpcomingBills().size();
+        
+        // Get the latest number of pending bills
+        int pendingBillsCount = 0;
+        try {
+            pendingBillsCount = billService.getUpcomingBills().size();
+            logger.debug("Found {} pending bills", pendingBillsCount);
+        } catch (Exception e) {
+            logger.error("Error getting pending bills: {}", e.getMessage(), e);
+        }
         
         // Get budget from DashboardService
         BigDecimal monthlyBudget = dashboardService.getTotalBudget();
@@ -364,23 +391,41 @@ public class DashboardPanel extends JPanel {
         expensesValueLabel.setText(formatCurrency(totalExpenses));
         budgetValueLabel.setText(formatCurrency(remainingBudget));
         billsValueLabel.setText(String.valueOf(pendingBillsCount));
+        
+        // Set color indication for pending bills - show in red if there are pending bills
+        if (pendingBillsCount > 0) {
+            billsValueLabel.setForeground(new Color(255, 99, 132)); // Red
+        } else {
+            billsValueLabel.setForeground(PRIMARY_COLOR); // Default color
+        }
     }
     
     private void updateSpendingChart() {
-        // Get spending data for last 7 days
+        // Get spending and income data for last 7 days
         Map<LocalDate, BigDecimal> dailySpending = dashboardService.getDailySpending(7);
+        Map<LocalDate, BigDecimal> dailyIncome = dashboardService.getDailyIncome(7);
         
         // Log the data for debugging
         logger.debug("Spending data for chart:");
         for (Map.Entry<LocalDate, BigDecimal> entry : dailySpending.entrySet()) {
-            logger.debug("{}: {}", entry.getKey(), entry.getValue());
+            logger.debug("{}: Expense={}, Income={}", 
+                       entry.getKey(), 
+                       entry.getValue(), 
+                       dailyIncome.get(entry.getKey()));
         }
         
         // Update dataset
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
         
+        // Add expenses and income data
         for (Map.Entry<LocalDate, BigDecimal> entry : dailySpending.entrySet()) {
-            dataset.addValue(entry.getValue(), "Expenses", entry.getKey().format(DATE_FORMATTER));
+            LocalDate date = entry.getKey();
+            String dateLabel = date.format(DATE_FORMATTER);
+            BigDecimal expense = entry.getValue();
+            BigDecimal income = dailyIncome.get(date);
+            
+            dataset.addValue(expense, "Expenses", dateLabel);
+            dataset.addValue(income, "Income", dateLabel);
         }
         
         // Update chart
@@ -390,7 +435,7 @@ public class DashboardPanel extends JPanel {
             "Amount (¥)",              // Y-Axis label
             dataset,                   // Dataset
             PlotOrientation.VERTICAL,  // Orientation
-            false,                     // Include legend
+            true,                      // Include legend
             true,                      // Include tooltips
             false                      // Include URLs
         );
@@ -398,10 +443,14 @@ public class DashboardPanel extends JPanel {
         // Customize chart
         CategoryPlot plot = chart.getCategoryPlot();
         BarRenderer renderer = (BarRenderer) plot.getRenderer();
-        renderer.setSeriesPaint(0, new Color(75, 192, 192));
+        renderer.setSeriesPaint(0, new Color(255, 99, 132)); // Expenses in red
+        renderer.setSeriesPaint(1, new Color(75, 192, 192)); // Income in green
         
         // Set a more reasonable range for the Y-axis
-        BigDecimal maxValue = getMaxDailySpending(dailySpending);
+        BigDecimal maxExpense = getMaxDailySpending(dailySpending);
+        BigDecimal maxIncome = getMaxDailySpending(dailyIncome);
+        BigDecimal maxValue = maxExpense.max(maxIncome);
+        
         double upperBound = maxValue.doubleValue() * 1.2; // Add 20% margin
         if (upperBound < 100) {
             upperBound = 100; // Minimum upper bound

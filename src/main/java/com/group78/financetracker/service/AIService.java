@@ -20,11 +20,12 @@ import java.util.stream.Collectors;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.JsonNode;
 
 public class AIService {
     private static final Logger logger = LoggerFactory.getLogger(AIService.class);
     
-    // DeepSeek API配置
+    // DeepSeek API configuration
     private static final String DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions";
     private static String DEEPSEEK_API_KEY = "sk-5437453fe5544771b8ca5196cfac9bc5"; // Using the provided API key
     private static final String DEEPSEEK_MODEL = "deepseek-chat";
@@ -65,38 +66,38 @@ public class AIService {
     }
 
     /**
-     * 基于描述自动分类交易
+     * Automatically categorizes a transaction based on its description
      */
     public String categorizeTransaction(String description) {
         String lowerDesc = description.toLowerCase();
         
-        // 先尝试基于关键词匹配
+        // First try keyword-based matching
         for (Map.Entry<String, String> entry : KEYWORD_CATEGORY_MAP.entrySet()) {
             if (lowerDesc.contains(entry.getKey().toLowerCase())) {
                 return entry.getValue();
             }
         }
         
-        // 如果关键词匹配失败，尝试使用DeepSeek API进行分类
+        // If keyword matching fails, try using DeepSeek API for categorization
         try {
             return categorizeWithDeepSeek(description);
         } catch (Exception e) {
             logger.error("DeepSeek API categorization failed: {}", e.getMessage());
-            return "Others"; // 默认分类
+            return "Others"; // Default category
         }
     }
     
     /**
-     * 使用DeepSeek API分类交易
+     * Uses DeepSeek API to categorize a transaction
      */
     private String categorizeWithDeepSeek(String description) throws IOException, InterruptedException {
-        // 如果API密钥未设置，直接返回默认分类
+        // If API key is not set, return default category
         if (DEEPSEEK_API_KEY == null || DEEPSEEK_API_KEY.isEmpty()) {
             logger.warn("DeepSeek API key not configured");
             return "Others";
         }
         
-        // 构建请求体
+        // Build request body
         ObjectNode requestBody = objectMapper.createObjectNode();
         requestBody.put("model", DEEPSEEK_MODEL);
         
@@ -112,10 +113,10 @@ public class AIService {
         userMessage.put("role", "user");
         userMessage.put("content", "Transaction description: " + description);
         
-        // 设置温度，使输出更确定性
+        // Set temperature for more deterministic output
         requestBody.put("temperature", 0.1);
         
-        // 构建HTTP请求
+        // Build HTTP request
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(DEEPSEEK_API_URL))
                 .header("Content-Type", "application/json")
@@ -123,7 +124,7 @@ public class AIService {
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
                 .build();
         
-        // 发送请求并解析响应
+        // Send request and parse response
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         
         if (response.statusCode() != 200) {
@@ -131,7 +132,7 @@ public class AIService {
             return "Others";
         }
         
-        // 解析响应获取分类
+        // Parse response to get category
         try {
             Map<String, Object> responseMap = objectMapper.readValue(response.body(), Map.class);
             List<Map<String, Object>> choices = (List<Map<String, Object>>) responseMap.get("choices");
@@ -139,7 +140,7 @@ public class AIService {
             Map<String, Object> message = (Map<String, Object>) choice.get("message");
             String content = (String) message.get("content");
             
-            // 清理并验证分类
+            // Clean and validate category
             String category = content.trim();
             if (PREDEFINED_CATEGORIES.contains(category)) {
                 return category;
@@ -154,7 +155,7 @@ public class AIService {
     }
 
     /**
-     * 分析支出模式
+     * Analyzes spending patterns
      */
     public Map<String, Object> analyzeSpendingPattern(List<Transaction> transactions) {
         Map<String, Object> analysis = new HashMap<>();
@@ -202,107 +203,149 @@ public class AIService {
     }
 
     /**
-     * 使用DeepSeek生成个性化财务分析和建议
+     * Generates personalized financial analysis and advice using DeepSeek
      */
     public String generateFinancialInsights(List<Transaction> transactions) {
-        if (transactions.isEmpty()) {
-            return "Insufficient data for analysis. Please add more transactions.";
-        }
+        // Create generic prompt
+        String prompt = "Please analyze the user's transaction data and provide personalized financial advice. " +
+                       "Offer insights regarding spending patterns, budget management, and savings opportunities.";
         
-        // 如果API密钥未设置，返回基本建议
-        if (DEEPSEEK_API_KEY == null || DEEPSEEK_API_KEY.isEmpty()) {
-            logger.warn("DeepSeek API key not configured, falling back to basic suggestions");
-            return String.join("\n\n", generateBasicSavingsSuggestions(analyzeSpendingPattern(transactions)));
-        }
-        
+        return generateFinancialInsights(transactions, prompt);
+    }
+    
+    /**
+     * Generates personalized financial analysis and advice using DeepSeek (with custom prompt)
+     * @param transactions list of transactions
+     * @param customPrompt custom prompt/question
+     * @return generated financial analysis and advice
+     */
+    public String generateFinancialInsights(List<Transaction> transactions, String customPrompt) {
         try {
-            // 准备交易数据
-            Map<String, BigDecimal> categoryTotals = transactions.stream()
-                .collect(Collectors.groupingBy(
-                    Transaction::getCategory,
-                    Collectors.reducing(BigDecimal.ZERO, Transaction::getAmount, BigDecimal::add)
-                ));
-            
-            BigDecimal totalSpent = categoryTotals.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
-            
-            // 构建提示词
-            StringBuilder prompt = new StringBuilder();
-            prompt.append("Here is my transaction data for analysis:\n\n");
-            prompt.append("Total Spent: ¥").append(totalSpent).append("\n");
-            prompt.append("Spending by Category:\n");
-            
-            for (Map.Entry<String, BigDecimal> entry : categoryTotals.entrySet()) {
-                prompt.append("- ").append(entry.getKey()).append(": ¥")
-                      .append(entry.getValue()).append(" (")
-                      .append(entry.getValue().multiply(BigDecimal.valueOf(100))
-                             .divide(totalSpent, 2, BigDecimal.ROUND_HALF_UP))
-                      .append("%)\n");
+            if (transactions.isEmpty()) {
+                return "Not enough transaction data for analysis.";
             }
             
-            // 调用DeepSeek API
-            return callDeepSeekForInsights(prompt.toString());
+            // Prepare transaction data summary
+            Map<String, Object> analysis = analyzeSpendingPattern(transactions);
+            
+            String transactionSummary = String.format(
+                "User has %d transactions, with total spending of %s. The highest spending category is %s, with a daily average of %s.",
+                transactions.size(),
+                analysis.get("totalSpent"),
+                analysis.get("topCategory"),
+                analysis.get("dailyAverage")
+            );
+            
+            // Build final prompt
+            String finalPrompt = customPrompt + "\n\n" + transactionSummary + 
+                               "\n\nPlease provide detailed analysis and practical recommendations. Answer in English with clear organization.";
+            
+            // Try using DeepSeek API
+            try {
+                return callDeepSeekForInsights(finalPrompt);
+            } catch (Exception e) {
+                logger.warn("DeepSeek API call failed, falling back to basic analysis: {}", e.getMessage());
+                // If DeepSeek API call fails, fall back to basic analysis
+                List<String> suggestions = generateBasicSavingsSuggestions(analysis);
+                return String.join("\n\n", suggestions);
+            }
         } catch (Exception e) {
-            logger.error("Failed to generate insights: {}", e.getMessage());
-            return "Failed to generate insights. Please try again later.";
+            logger.error("Error generating financial insights: {}", e.getMessage());
+            return "Error generating financial analysis: " + e.getMessage();
         }
     }
     
     /**
-     * 调用DeepSeek API获取财务洞察
+     * Calls DeepSeek API for financial insights based on a user message
+     * 
+     * @param userMessage The user's message
+     * @return AI-generated response
+     * @throws IOException If an error occurs during API call
+     * @throws InterruptedException If the API call is interrupted
      */
-    private String callDeepSeekForInsights(String prompt) throws IOException, InterruptedException {
-        // 构建请求体
-        ObjectNode requestBody = objectMapper.createObjectNode();
-        requestBody.put("model", DEEPSEEK_MODEL);
+    private String callDeepSeekForInsights(String userMessage) throws IOException, InterruptedException {
+        String systemPrompt = "You are a professional financial analyst and advisor. Only answer questions related to finance, investments, budgeting, savings, and other financial topics. " +
+                "If a user asks about non-financial topics, politely remind them that you can only answer finance-related questions. " +
+                "Provide useful and accurate financial advice using clear and understandable language. Always base your analysis on the data provided by the user. " +
+                "If questions involve budget data, refer to the information in budget.csv file. If questions involve bill data, refer to the information in bills.csv file.";
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("model", "deepseek-chat");
         
-        ArrayNode messagesArray = requestBody.putArray("messages");
-        ObjectNode systemMessage = messagesArray.addObject();
-        systemMessage.put("role", "system");
-        systemMessage.put("content", "You are a financial advisor. Analyze the user's spending data and provide " +
-                "personalized insights and suggestions to help them improve their financial health. " +
-                "Focus on identifying patterns, potential savings opportunities, and actionable advice. " +
-                "Keep your response concise, clear, and easy to understand. " +
-                "Format your response with clear headings and bullet points where appropriate.");
+        List<Map<String, String>> messages = new ArrayList<>();
+        messages.add(Map.of("role", "system", "content", systemPrompt));
+        messages.add(Map.of("role", "user", "content", userMessage));
         
-        ObjectNode userMessage = messagesArray.addObject();
-        userMessage.put("role", "user");
-        userMessage.put("content", prompt);
+        requestBody.put("messages", messages);
+        requestBody.put("temperature", 0.3); // Lower temperature for more deterministic answers
+        requestBody.put("max_tokens", 1000); // Increase max tokens for more complete answers
         
-        // 设置温度，允许一些创造性
-        requestBody.put("temperature", 0.7);
-        requestBody.put("max_tokens", 1000);
+        String requestBodyJson = new ObjectMapper().writeValueAsString(requestBody);
         
-        // 构建HTTP请求
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(DEEPSEEK_API_URL))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + DEEPSEEK_API_KEY)
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
-                .build();
+        // Implement retry logic
+        int maxRetries = 2;
+        int retryCount = 0;
+        HttpResponse<String> response = null;
         
-        // 发送请求并解析响应
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        while (retryCount <= maxRetries) {
+            try {
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(DEEPSEEK_API_URL))
+                        .header("Content-Type", "application/json")
+                        .header("Authorization", "Bearer " + DEEPSEEK_API_KEY)
+                        .POST(HttpRequest.BodyPublishers.ofString(requestBodyJson))
+                        .timeout(Duration.ofSeconds(30)) // Set 30 second timeout
+                        .build();
         
-        if (response.statusCode() != 200) {
-            logger.error("DeepSeek API error: {} {}", response.statusCode(), response.body());
-            return "Failed to generate insights due to API error. Please try again later.";
+                response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                
+                if (response.statusCode() == 200) {
+                    break; // If successful, exit retry loop
+                } else if (response.statusCode() == 429 || response.statusCode() == 500) {
+                    // If rate limited or server error, retry
+                    retryCount++;
+                    if (retryCount <= maxRetries) {
+                        logger.warn("API request failed (status code: {}), retrying attempt {}", response.statusCode(), retryCount);
+                        Thread.sleep(1000 * retryCount); // Exponential backoff retry
+                    }
+                } else {
+                    // For other errors, throw exception directly
+                    logger.error("API returned error: {} - {}", response.statusCode(), response.body());
+                    throw new IOException("API error: " + response.statusCode() + " - " + response.body());
+                }
+            } catch (IOException | InterruptedException e) {
+                retryCount++;
+                if (retryCount <= maxRetries) {
+                    logger.warn("API request failed, retrying attempt {}: {}", retryCount, e.getMessage());
+                    Thread.sleep(1000 * retryCount); // Exponential backoff retry
+                } else {
+                    throw e; // Retry count exhausted, throw exception
+                }
+            }
         }
         
-        // 解析响应获取内容
+        if (response == null || response.statusCode() != 200) {
+            throw new IOException("API request failed after " + maxRetries + " retries");
+        }
+
         try {
-            Map<String, Object> responseMap = objectMapper.readValue(response.body(), Map.class);
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) responseMap.get("choices");
-            Map<String, Object> choice = choices.get(0);
-            Map<String, Object> message = (Map<String, Object>) choice.get("message");
-            return (String) message.get("content");
+            JsonNode rootNode = new ObjectMapper().readTree(response.body());
+            if (rootNode.has("choices") && rootNode.get("choices").isArray() && rootNode.get("choices").size() > 0) {
+                JsonNode firstChoice = rootNode.get("choices").get(0);
+                if (firstChoice.has("message") && firstChoice.get("message").has("content")) {
+                    return firstChoice.get("message").get("content").asText();
+                }
+            }
+            logger.error("Unexpected API response format: {}", response.body());
+            throw new IOException("Unexpected API response format");
         } catch (Exception e) {
-            logger.error("Failed to parse DeepSeek API response: {}", e.getMessage());
-            return "Failed to parse AI-generated insights. Please try again.";
+            logger.error("Error parsing API response: {}", e.getMessage());
+            throw new IOException("Error parsing API response: " + e.getMessage());
         }
     }
 
     /**
-     * 生成基本的节省建议（备用方案）
+     * Generates basic savings suggestions (fallback option)
      */
     public List<String> generateBasicSavingsSuggestions(Map<String, Object> analysis) {
         List<String> suggestions = new ArrayList<>();
@@ -312,17 +355,17 @@ public class AIService {
         String topCategory = (String) analysis.get("topCategory");
         BigDecimal dailyAverage = (BigDecimal) analysis.get("dailyAverage");
         
-        // 基于最高支出类别的建议
+        // Suggestions based on highest spending category
         if (topCategory != null && !topCategory.isEmpty()) {
             suggestions.add("Your highest spending is in " + topCategory + " category. Consider reviewing these expenses.");
         }
         
-        // 基于日均支出的建议
+        // Suggestions based on daily average spending
         if (dailyAverage.compareTo(new BigDecimal("200")) > 0) {
             suggestions.add("Your daily spending is relatively high. Consider creating a detailed budget plan.");
         }
         
-        // 基于类别分布的建议
+        // Suggestions based on category distribution
         if (categoryTotals != null) {
             BigDecimal foodExpense = categoryTotals.getOrDefault("Food", BigDecimal.ZERO);
             BigDecimal totalExpense = categoryTotals.values().stream()
@@ -333,7 +376,7 @@ public class AIService {
             }
         }
         
-        // 通用建议
+        // General suggestions
         suggestions.add("Consider using automatic expense tracking to maintain timely and accurate records.");
         suggestions.add("Regularly review your bills to ensure there are no duplicate or erroneous charges.");
         
@@ -341,11 +384,40 @@ public class AIService {
     }
     
     /**
-     * 配置API密钥
+     * Configure API key
      */
     public void setApiKey(String apiKey) {
-        // 在实际应用中，应该安全地存储API密钥
-        // 这里仅用于演示
+        // In a real application, the API key should be stored securely
+        // This is just for demonstration
+        DEEPSEEK_API_KEY = apiKey;
         logger.info("DeepSeek API key updated");
+    }
+
+    /**
+     * Generates financial insights based on a user message.
+     * This method is used by the AIPanel for direct chatting functionality.
+     *
+     * @param userMessage The message from the user
+     * @return AI-generated financial insights or a fallback message if the API key is not configured
+     */
+    public String generateFinancialInsights(String userMessage) {
+        if (DEEPSEEK_API_KEY == null || DEEPSEEK_API_KEY.isEmpty() || DEEPSEEK_API_KEY.equals("your_api_key_here")) {
+            logger.warn("DeepSeek API key not configured. Using fallback message.");
+            return "Unable to process your request as the AI service is not configured. Please add your DeepSeek API key in the settings.";
+        }
+
+        try {
+            return callDeepSeekForInsights(userMessage);
+        } catch (Exception e) {
+            logger.error("Error generating financial insights: {}", e.getMessage());
+            String errorMessage = "Sorry, I encountered an error while processing your request. Please try again later.";
+            
+            // If it's a specific API error, provide more detailed feedback
+            if (e.getMessage().contains("API error")) {
+                errorMessage += "\n\nTechnical error: " + e.getMessage();
+            }
+            
+            return errorMessage;
+        }
     }
 } 

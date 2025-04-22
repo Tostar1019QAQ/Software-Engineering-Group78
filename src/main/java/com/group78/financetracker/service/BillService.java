@@ -223,6 +223,19 @@ public class BillService {
      * Reload bills data from CSV file
      */
     public void reloadBills() {
-        loadBillsFromCSV();
+        logger.info("正在重新加载账单数据...");
+        // 首先尝试从CSV加载
+        boolean csvLoaded = loadBillsFromCSV();
+        
+        // 如果CSV加载失败，尝试从JSON加载
+        if (!csvLoaded) {
+            logger.info("CSV加载失败，尝试从JSON加载");
+            loadBillsFromJSON();
+        }
+        
+        // 更新所有账单的状态
+        bills.forEach(Bill::updateStatus);
+        
+        logger.info("账单数据重新加载完成，共 {} 条账单记录", bills.size());
     }
 } 
