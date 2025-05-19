@@ -1,6 +1,7 @@
 package com.group78.financetracker.service;
 
 import com.group78.financetracker.model.Transaction;
+import com.group78.financetracker.model.TransactionType;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -418,6 +419,343 @@ public class AIService {
             }
             
             return errorMessage;
+        }
+    }
+
+    /**
+     * Calculates a financial health score based on income, expenses, and savings.
+     * The score is on a scale of 0 to 100, where:
+     * - 90-100: Excellent financial health
+     * - 75-89: Good financial health
+     * - 60-74: Average financial health
+     * - 40-59: Below average financial health
+     * - 0-39: Poor financial health
+     * 
+     * @param transactions List of transactions to analyze
+     * @return A map containing the score and recommendations
+     */
+    public Map<String, Object> calculateFinancialHealthScore(List<Transaction> transactions) {
+        Map<String, Object> result = new HashMap<>();
+        
+        if (transactions == null || transactions.isEmpty()) {
+            result.put("score", 0);
+            result.put("category", "Insufficient Data");
+            result.put("recommendations", Collections.singletonList("Not enough transaction data to calculate a financial health score."));
+            return result;
+        }
+        
+        // Calculate total income and expenses
+        BigDecimal totalIncome = BigDecimal.ZERO;
+        BigDecimal totalExpenses = BigDecimal.ZERO;
+        
+        for (Transaction transaction : transactions) {
+            if (transaction.getType() == TransactionType.INCOME) {
+                totalIncome = totalIncome.add(transaction.getAmount());
+            } else if (transaction.getType() == TransactionType.EXPENSE) {
+                totalExpenses = totalExpenses.add(transaction.getAmount());
+            }
+        }
+        
+        // Calculate metrics
+        BigDecimal netSavings = totalIncome.subtract(totalExpenses);
+        BigDecimal savingsRate = BigDecimal.ZERO;
+        if (totalIncome.compareTo(BigDecimal.ZERO) > 0) {
+            savingsRate = netSavings.divide(totalIncome, 4, BigDecimal.ROUND_HALF_UP)
+                               .multiply(new BigDecimal("100"));
+        }
+        
+        // Calculate expense to income ratio
+        BigDecimal expenseToIncomeRatio = BigDecimal.ONE;
+        if (totalIncome.compareTo(BigDecimal.ZERO) > 0) {
+            expenseToIncomeRatio = totalExpenses.divide(totalIncome, 4, BigDecimal.ROUND_HALF_UP);
+        }
+        
+        // Calculate score components
+        int savingsComponent = calculateSavingsComponent(savingsRate);
+        int expenseRatioComponent = calculateExpenseRatioComponent(expenseToIncomeRatio);
+        int diversificationComponent = calculateDiversificationComponent(transactions);
+        
+        // Calculate final score (weighted average)
+        int finalScore = (int) (savingsComponent * 0.5 + expenseRatioComponent * 0.3 + diversificationComponent * 0.2);
+        finalScore = Math.max(0, Math.min(100, finalScore)); // Ensure score is between 0 and 100
+        
+        // Determine score category
+        String category;
+        if (finalScore >= 90) {
+            category = "Excellent";
+        } else if (finalScore >= 75) {
+            category = "Good";
+        } else if (finalScore >= 60) {
+            category = "Average";
+        } else if (finalScore >= 40) {
+            category = "Below Average";
+        } else {
+            category = "Poor";
+        }
+        
+        // Generate recommendations
+        List<String> recommendations = generateFinancialHealthRecommendations(
+                savingsRate.doubleValue(), 
+                expenseToIncomeRatio.doubleValue(),
+                diversificationComponent,
+                transactions);
+        
+        // Prepare result
+        result.put("score", finalScore);
+        result.put("category", category);
+        result.put("savingsRate", savingsRate);
+        result.put("expenseToIncomeRatio", expenseToIncomeRatio);
+        result.put("totalIncome", totalIncome);
+        result.put("totalExpenses", totalExpenses);
+        result.put("netSavings", netSavings);
+        result.put("recommendations", recommendations);
+        
+        return result;
+    }
+    
+    /**
+     * Calculates the savings component of the financial health score.
+     * @param savingsRate The savings rate as a percentage
+     * @return A score between 0 and 100
+     */
+    private int calculateSavingsComponent(BigDecimal savingsRate) {
+        double rate = savingsRate.doubleValue();
+        
+        // Ideal savings rate is 20% or more
+        if (rate >= 20) {
+            return 100;
+        } else if (rate >= 15) {
+            return 90;
+        } else if (rate >= 10) {
+            return 80;
+        } else if (rate >= 5) {
+            return 60;
+        } else if (rate >= 0) {
+            return 40;
+        } else {
+            // Negative savings rate (spending more than earning)
+            return (int) Math.max(0, 40 + rate); // Decrease score for negative rates
+        }
+    }
+    
+    /**
+     * Calculates the expense ratio component of the financial health score.
+     * @param expenseToIncomeRatio The ratio of expenses to income
+     * @return A score between 0 and 100
+     */
+    private int calculateExpenseRatioComponent(BigDecimal expenseToIncomeRatio) {
+        double ratio = expenseToIncomeRatio.doubleValue();
+        
+        // Ideal ratio is 0.8 or less (spending 80% or less of income)
+        if (ratio <= 0.6) {
+            return 100;
+        } else if (ratio <= 0.7) {
+            return 90;
+        } else if (ratio <= 0.8) {
+            return 80;
+        } else if (ratio <= 0.9) {
+            return 60;
+        } else if (ratio <= 1.0) {
+            return 40;
+        } else {
+            // Spending more than earning
+            return (int) Math.max(0, 40 - (ratio - 1.0) * 40);
+        }
+    }
+    
+    /**
+     * Calculates the diversification component of the financial health score.
+     * @param transactions List of transactions to analyze
+     * @return A score between 0 and 100
+     */
+    private int calculateDiversificationComponent(List<Transaction> transactions) {
+        // Calculate category distribution
+        Map<String, BigDecimal> categoryTotals = transactions.stream()
+            .filter(t -> t.getType() == TransactionType.EXPENSE)
+            .collect(Collectors.groupingBy(
+                Transaction::getCategory,
+                Collectors.reducing(BigDecimal.ZERO, Transaction::getAmount, BigDecimal::add)
+            ));
+        
+        if (categoryTotals.isEmpty()) {
+            return 50; // Neutral score if no expense categories
+        }
+        
+        // Calculate total expenses
+        BigDecimal totalExpenses = categoryTotals.values().stream()
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        if (totalExpenses.compareTo(BigDecimal.ZERO) == 0) {
+            return 50; // Neutral score if no expenses
+        }
+        
+        // Calculate percentage for each category
+        List<Double> categoryPercentages = categoryTotals.values().stream()
+            .map(amount -> amount.divide(totalExpenses, 4, BigDecimal.ROUND_HALF_UP).doubleValue() * 100)
+            .collect(Collectors.toList());
+        
+        // Calculate standard deviation of percentages (lower is better - more evenly distributed)
+        double mean = categoryPercentages.stream().mapToDouble(Double::doubleValue).average().orElse(0);
+        double sumSquaredDiff = categoryPercentages.stream()
+            .mapToDouble(p -> Math.pow(p - mean, 2))
+            .sum();
+        double stdDev = Math.sqrt(sumSquaredDiff / categoryPercentages.size());
+        
+        // Convert standard deviation to a score (inverse relationship)
+        // A perfectly balanced budget would have stdDev = 0
+        // Typical range might be 0-50 for stdDev in realistic scenarios
+        int score = (int) Math.max(0, 100 - stdDev * 2);
+        
+        // Adjust for number of categories (more categories is better)
+        int categoryCount = categoryTotals.size();
+        int categoryBonus = Math.min(20, categoryCount * 4); // Up to 20 point bonus for 5+ categories
+        
+        return Math.min(100, score + categoryBonus);
+    }
+    
+    /**
+     * Generates personalized recommendations based on financial health analysis.
+     * 
+     * @param savingsRate The savings rate percentage
+     * @param expenseRatio The expense to income ratio
+     * @param diversificationScore The diversification component score
+     * @param transactions List of transactions for detailed analysis
+     * @return A list of specific recommendations
+     */
+    private List<String> generateFinancialHealthRecommendations(
+            double savingsRate, 
+            double expenseRatio, 
+            int diversificationScore,
+            List<Transaction> transactions) {
+        
+        List<String> recommendations = new ArrayList<>();
+        
+        // Savings recommendations
+        if (savingsRate < 0) {
+            recommendations.add("CRITICAL: You're spending more than you earn. Reduce expenses immediately to avoid debt accumulation.");
+        } else if (savingsRate < 5) {
+            recommendations.add("Your savings rate is very low. Aim to save at least 5-10% of your income.");
+        } else if (savingsRate < 10) {
+            recommendations.add("Consider increasing your savings rate to at least 10-15% for better financial security.");
+        } else if (savingsRate < 20) {
+            recommendations.add("Good savings rate. For long-term financial independence, try to increase savings to 20% or more.");
+        } else {
+            recommendations.add("Excellent savings rate! Continue maintaining this level for strong financial health.");
+        }
+        
+        // Expense ratio recommendations
+        if (expenseRatio > 1.0) {
+            recommendations.add("Your expenses exceed your income. Identify non-essential spending to reduce immediately.");
+        } else if (expenseRatio > 0.9) {
+            recommendations.add("Your expense ratio is very high. Look for ways to reduce expenses or increase income.");
+        } else if (expenseRatio > 0.8) {
+            recommendations.add("Try to reduce your expense-to-income ratio to below 80% for better financial stability.");
+        } else {
+            recommendations.add("Your expense-to-income ratio is well-managed. Continue monitoring to maintain this level.");
+        }
+        
+        // Diversification recommendations
+        if (diversificationScore < 50) {
+            recommendations.add("Your spending is concentrated in too few categories. A more balanced budget across different categories reduces financial risk.");
+        }
+        
+        // Category-specific recommendations
+        Map<String, BigDecimal> categoryTotals = transactions.stream()
+            .filter(t -> t.getType() == TransactionType.EXPENSE)
+            .collect(Collectors.groupingBy(
+                Transaction::getCategory,
+                Collectors.reducing(BigDecimal.ZERO, Transaction::getAmount, BigDecimal::add)
+            ));
+        
+        BigDecimal totalExpenses = categoryTotals.values().stream()
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        if (totalExpenses.compareTo(BigDecimal.ZERO) > 0) {
+            // Check for categories with excessive spending
+            for (Map.Entry<String, BigDecimal> entry : categoryTotals.entrySet()) {
+                String category = entry.getKey();
+                BigDecimal amount = entry.getValue();
+                BigDecimal percentage = amount.divide(totalExpenses, 4, BigDecimal.ROUND_HALF_UP)
+                                           .multiply(new BigDecimal("100"));
+                
+                // Category-specific thresholds for recommendations
+                if (category.equals("Food") && percentage.compareTo(new BigDecimal("30")) > 0) {
+                    recommendations.add("Your food expenses are high at " + percentage.setScale(1, BigDecimal.ROUND_HALF_UP) + 
+                                     "% of total spending. Consider meal planning or cooking at home more often.");
+                } else if (category.equals("Entertainment") && percentage.compareTo(new BigDecimal("15")) > 0) {
+                    recommendations.add("Entertainment expenses at " + percentage.setScale(1, BigDecimal.ROUND_HALF_UP) + 
+                                     "% may be reduced by finding lower-cost alternatives.");
+                } else if (category.equals("Shopping") && percentage.compareTo(new BigDecimal("20")) > 0) {
+                    recommendations.add("Shopping expenses are " + percentage.setScale(1, BigDecimal.ROUND_HALF_UP) + 
+                                     "% of your budget. Consider implementing a waiting period before non-essential purchases.");
+                }
+            }
+        }
+        
+        // Add some general recommendations if we don't have many specific ones
+        if (recommendations.size() < 3) {
+            recommendations.add("Establish an emergency fund with 3-6 months of essential expenses.");
+            recommendations.add("Review and optimize your recurring subscriptions and bills regularly.");
+        }
+        
+        return recommendations;
+    }
+    
+    /**
+     * Analyzes financial health and generates a comprehensive report with DeepSeek API.
+     * 
+     * @param transactions List of transactions to analyze
+     * @return A detailed financial health report
+     */
+    public String generateFinancialHealthReport(List<Transaction> transactions) {
+        try {
+            Map<String, Object> healthScore = calculateFinancialHealthScore(transactions);
+            
+            // Format the score data for the prompt
+            int score = (int) healthScore.get("score");
+            String category = (String) healthScore.get("category");
+            BigDecimal savingsRate = (BigDecimal) healthScore.get("savingsRate");
+            BigDecimal expenseRatio = (BigDecimal) healthScore.get("expenseToIncomeRatio");
+            @SuppressWarnings("unchecked")
+            List<String> recommendations = (List<String>) healthScore.get("recommendations");
+            
+            // Create detailed prompt
+            String prompt = String.format(
+                "Generate a comprehensive financial health report for a user with the following metrics:\n" +
+                "- Financial Health Score: %d/100 (%s)\n" +
+                "- Savings Rate: %.1f%%\n" +
+                "- Expense-to-Income Ratio: %.2f\n\n" +
+                "Initial recommendations based on analysis:\n%s\n\n" +
+                "Please provide a detailed assessment of their financial health, explaining the score and offering practical, " +
+                "actionable advice for improvement. Include specific strategies for building emergency savings, reducing debt, " +
+                "optimizing spending patterns, and improving long-term financial stability.",
+                score, category, savingsRate.doubleValue(), expenseRatio.doubleValue(),
+                String.join("\n", recommendations)
+            );
+            
+            // Call the AI service
+            try {
+                return callDeepSeekForInsights(prompt);
+            } catch (Exception e) {
+                logger.warn("DeepSeek API call failed for financial health report: {}", e.getMessage());
+                
+                // If API call fails, return a basic report
+                StringBuilder report = new StringBuilder();
+                report.append("# Financial Health Report\n\n");
+                report.append(String.format("Your Financial Health Score: %d/100 (%s)\n\n", score, category));
+                report.append(String.format("Savings Rate: %.1f%%\n", savingsRate.doubleValue()));
+                report.append(String.format("Expense-to-Income Ratio: %.2f\n\n", expenseRatio.doubleValue()));
+                report.append("## Recommendations\n\n");
+                
+                for (String recommendation : recommendations) {
+                    report.append("- ").append(recommendation).append("\n");
+                }
+                
+                return report.toString();
+            }
+        } catch (Exception e) {
+            logger.error("Error generating financial health report: {}", e.getMessage());
+            return "Unable to generate financial health report due to an error: " + e.getMessage();
         }
     }
 } 
