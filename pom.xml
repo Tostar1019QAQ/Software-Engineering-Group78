@@ -12,15 +12,8 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <main.class>com.group78.financetracker.FinanceTrackerApp</main.class>
+        <main.class>com.group78.finance.FinanceTrackerApp</main.class>
     </properties>
-
-    <repositories>
-        <repository>
-            <id>jcenter</id>
-            <url>https://jcenter.bintray.com/</url>
-        </repository>
-    </repositories>
 
     <dependencies>
         <!-- Swing Look and Feel -->
@@ -75,7 +68,7 @@
             <version>3.6.1</version>
         </dependency>
 
-        <!-- 单元测试 -->
+        <!-- 单元测试 (JUnit 5) -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -94,15 +87,15 @@
             <artifactId>slf4j-simple</artifactId>
             <version>1.7.36</version>
         </dependency>
-        
+
         <!-- Chart Visualization -->
         <dependency>
             <groupId>org.jfree</groupId>
             <artifactId>jfreechart</artifactId>
             <version>1.5.4</version>
         </dependency>
-        
-        <!-- HTTP客户端 - 用于DeepSeek API调用 -->
+
+        <!-- HTTP客户端 -->
         <dependency>
             <groupId>org.apache.httpcomponents.client5</groupId>
             <artifactId>httpclient5</artifactId>
@@ -111,6 +104,8 @@
     </dependencies>
 
     <build>
+        <sourceDirectory>src/main/java/com/group78/financetracker</sourceDirectory>
+        <testSourceDirectory>src/test/java</testSourceDirectory>
         <plugins>
             <!-- Compiler Plugin -->
             <plugin>
@@ -139,7 +134,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Assembly Plugin for creating executable JAR with dependencies -->
+            <!-- Assembly Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
@@ -165,7 +160,7 @@
                 </executions>
             </plugin>
 
-            <!-- Exec Plugin for running from Maven -->
+            <!-- Exec Plugin -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
@@ -176,4 +171,4 @@
             </plugin>
         </plugins>
     </build>
-</project> 
+</project>
