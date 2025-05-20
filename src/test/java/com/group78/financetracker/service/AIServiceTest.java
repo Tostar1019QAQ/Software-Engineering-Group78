@@ -75,15 +75,15 @@ public class AIServiceTest {
         assertTrue(result.containsKey("topCategory"), "Result should contain topCategory");
         assertTrue(result.containsKey("categoryTotals"), "Result should contain categoryTotals");
         
-        // 获取实际总支出
+      
         BigDecimal actualTotal = (BigDecimal) result.get("totalSpent");
         assertNotNull(actualTotal, "Total spent should not be null");
         
-        // 检查顶级消费类别
+       
         String topCategory = (String) result.get("topCategory");
         assertNotNull(topCategory, "Top category should not be null");
         
-        // 验证类别总计
+      
         @SuppressWarnings("unchecked")
         Map<String, BigDecimal> categoryTotals = (Map<String, BigDecimal>) result.get("categoryTotals");
         assertNotNull(categoryTotals, "Category totals should not be null");
@@ -140,8 +140,9 @@ public class AIServiceTest {
         assertNotNull(insights, "Insights should not be null");
         assertFalse(insights.isEmpty(), "Insights should not be empty");
         
-        // 检查中文关键词是否存在
-        assertTrue(insights.contains("财务分析报告") || insights.contains("建议"),
+        // Check if Chinese keywords exist
+        // Check if key terms exist in the content
+        assertTrue(insights.contains("Financial Analysis Report") || insights.contains("Recommendations"),
             "Insights should contain financial analysis information");
     }
     
@@ -159,10 +160,11 @@ public class AIServiceTest {
         assertFalse(report.isEmpty(), "Financial health report should not be empty");
         assertTrue(report.length() > 100, "Report should be substantial in length");
         
-        // 验证报告包含关键部分
-        assertTrue(report.contains("财务健康报告") || report.contains("财务分析"),
+        // Verify report contains key sections
+        // Verify the report contains key sections
+        assertTrue(report.contains("Financial Health Report") || report.contains("Financial Analysis"),
             "Report should contain financial health assessment");
-        assertTrue(report.contains("建议") || report.contains("分析"),
+        assertTrue(report.contains("Recommendations") || report.contains("Analysis"),
             "Report should contain recommendations or suggestions");
     }
     

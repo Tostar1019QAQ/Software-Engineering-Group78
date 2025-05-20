@@ -80,7 +80,7 @@ public class AIService {
             }
         }
         
-        // 如果关键词匹配失败，使用简单的启发式匹配而不是调用API
+        // If keyword matching fails, use simple heuristic matching instead of calling API
         if (lowerDesc.contains("gas") || lowerDesc.contains("uber") || lowerDesc.contains("bus") || lowerDesc.contains("train")) {
             return "Transport";
         } else if (lowerDesc.contains("grocery") || lowerDesc.contains("restaurant") || lowerDesc.contains("cafe")) {
@@ -94,7 +94,7 @@ public class AIService {
         } else if (lowerDesc.contains("school") || lowerDesc.contains("book") || lowerDesc.contains("course")) {
             return "Education";
         } else {
-            return "Others"; // 默认分类
+            return "Others"; // Default category
         }
     }
     
@@ -151,26 +151,26 @@ public class AIService {
      */
     public String generateFinancialInsights(List<Transaction> transactions) {
         if (transactions.isEmpty()) {
-            return "没有足够的交易数据进行分析。";
+            return "Not enough transaction data for analysis.";
         }
         
-        // 使用基本分析替代DeepSeek API调用
+        // Use basic analysis instead of DeepSeek API call
         Map<String, Object> analysis = analyzeSpendingPattern(transactions);
         List<String> suggestions = generateBasicSavingsSuggestions(analysis);
         
         StringBuilder insights = new StringBuilder();
-        insights.append("财务分析报告:\n\n");
+        insights.append("Financial Analysis Report:\n\n");
         
-        // 添加基本财务指标
+        // Add basic financial metrics
         BigDecimal totalSpent = (BigDecimal) analysis.get("totalSpent");
         BigDecimal dailyAverage = (BigDecimal) analysis.get("dailyAverage");
         String topCategory = (String) analysis.get("topCategory");
         
-        insights.append("您在 ").append(topCategory).append(" 类别上的支出最高。\n");
-        insights.append("平均每日支出为 ¥").append(dailyAverage.setScale(2, RoundingMode.HALF_UP)).append("。\n\n");
+        insights.append("Your highest spending is in the ").append(topCategory).append(" category.\n");
+        insights.append("Your average daily spending is $").append(dailyAverage.setScale(2, RoundingMode.HALF_UP)).append(".\n\n");
         
-        // 添加建议
-        insights.append("建议:\n");
+        // Add recommendations
+        insights.append("Recommendations:\n");
         for (String suggestion : suggestions) {
             insights.append("- ").append(suggestion).append("\n");
         }
@@ -182,16 +182,16 @@ public class AIService {
      * Generate financial insights from a custom prompt
      */
     public String generateFinancialInsights(String customPrompt) {
-        // 提供固定的财务洞察而不是调用API
+        // Provide fixed financial insights instead of calling API
         StringBuilder insights = new StringBuilder();
         
-        insights.append("财务分析:\n\n");
-        insights.append("根据您的财务数据，我们建议考虑以下方面的改进:\n");
-        insights.append("1. 创建应急基金：建立相当于3-6个月日常开支的储备金。\n");
-        insights.append("2. 制定详细预算：跟踪每月支出，找出可以削减的领域。\n");
-        insights.append("3. 优化开支结构：尽量将至少20%的收入用于储蓄和投资。\n");
-        insights.append("4. 审查固定支出：定期检查各种订阅服务和账单，取消不必要的支出。\n");
-        insights.append("5. 设立自动储蓄：每次发薪日自动转移一部分资金到储蓄账户。\n");
+        insights.append("Financial Analysis:\n\n");
+        insights.append("Based on your financial data, we recommend considering the following improvements:\n");
+        insights.append("1. Create an emergency fund: Build a reserve equivalent to 3-6 months of daily expenses.\n");
+        insights.append("2. Create a detailed budget: Track monthly spending to identify areas for reduction.\n");
+        insights.append("3. Optimize spending structure: Try to allocate at least 20% of income to savings and investments.\n");
+        insights.append("4. Review fixed expenses: Regularly check subscription services and bills, cancel unnecessary expenses.\n");
+        insights.append("5. Set up automatic savings: Automatically transfer a portion of funds to a savings account on each payday.\n");
         
         return insights.toString();
     }
@@ -310,21 +310,21 @@ public class AIService {
         List<String> recommendations = new ArrayList<>();
         
         if (savingsRate.compareTo(new BigDecimal("20")) < 0) {
-            recommendations.add("增加储蓄率至少达到20%，以确保长期财务安全");
+            recommendations.add("Increase savings rate to at least 20% to ensure long-term financial security");
         }
         
         if (expenseToIncomeRatio.compareTo(new BigDecimal("0.8")) > 0) {
-            recommendations.add("降低支出与收入的比例到80%以下，避免财务紧张");
+            recommendations.add("Reduce expense-to-income ratio to below 80% to avoid financial stress");
         }
         
         if (netSavings.compareTo(BigDecimal.ZERO) <= 0) {
-            recommendations.add("紧急调整预算，确保收入大于支出，避免负现金流");
+            recommendations.add("Urgently adjust budget to ensure income exceeds expenses and avoid negative cash flow");
         }
         
         // Add general recommendations
-        recommendations.add("建立相当于3-6个月生活费用的应急基金");
-        recommendations.add("定期检查账单和订阅服务，取消不必要的开支");
-        recommendations.add("考虑增加额外收入来源，提高整体财务稳定性");
+        recommendations.add("Establish an emergency fund equivalent to 3-6 months of living expenses");
+        recommendations.add("Regularly review bills and subscription services, cancel unnecessary expenses");
+        recommendations.add("Consider adding additional income sources to improve overall financial stability");
         
         // Populate result map
         result.put("score", finalScore);
@@ -345,7 +345,7 @@ public class AIService {
     public String generateFinancialHealthReport(List<Transaction> transactions) {
         Map<String, Object> healthScore = calculateFinancialHealthScore(transactions);
         
-        // 创建基本的财务健康报告
+        // Create basic financial health report
         int score = (int) healthScore.get("score");
         String category = (String) healthScore.get("category");
         BigDecimal savingsRate = (BigDecimal) healthScore.get("savingsRate");
@@ -354,27 +354,27 @@ public class AIService {
         @SuppressWarnings("unchecked")
         List<String> recommendations = (List<String>) healthScore.get("recommendations");
         
-        // 生成报告
+        // Generate report
         StringBuilder report = new StringBuilder();
-        report.append("# 财务健康报告\n\n");
-        report.append(String.format("您的财务健康评分: %d/100 (%s)\n\n", score, category));
-        report.append(String.format("储蓄率: %.1f%%\n", savingsRate.doubleValue()));
-        report.append(String.format("支出占收入比例: %.2f\n\n", expenseRatio.doubleValue()));
+        report.append("# Financial Health Report\n\n");
+        report.append(String.format("Your Financial Health Score: %d/100 (%s)\n\n", score, category));
+        report.append(String.format("Savings Rate: %.1f%%\n", savingsRate.doubleValue()));
+        report.append(String.format("Expense-to-Income Ratio: %.2f\n\n", expenseRatio.doubleValue()));
         
-        report.append("## 分析\n\n");
+        report.append("## Analysis\n\n");
         if (score >= 80) {
-            report.append("您的财务状况非常健康。您有良好的储蓄习惯，支出管理得当。继续保持这些良好习惯，将帮助您实现长期财务目标。\n\n");
+            report.append("Your financial condition is very healthy. You have good saving habits and manage expenses well. Continuing these good habits will help you achieve long-term financial goals.\n\n");
         } else if (score >= 60) {
-            report.append("您的财务状况良好，但仍有改进空间。增加储蓄或减少非必要支出可以进一步提高您的财务健康。\n\n");
+            report.append("Your financial condition is good, but there is still room for improvement. Increasing savings or reducing non-essential expenses can further improve your financial health.\n\n");
         } else if (score >= 40) {
-            report.append("您的财务状况一般，需要注意改进。建议审视您的支出模式，寻找可以削减的领域，并增加储蓄。\n\n");
+            report.append("Your financial condition is average and needs improvement. We recommend reviewing your spending patterns, finding areas for reduction, and increasing savings.\n\n");
         } else if (score >= 20) {
-            report.append("您的财务状况需要显著改善。优先考虑减少支出，增加储蓄，并可能需要寻求额外收入来源。\n\n");
+            report.append("Your financial condition needs significant improvement. Prioritize reducing expenses, increasing savings, and possibly seeking additional income sources.\n\n");
         } else {
-            report.append("您的财务状况处于危急水平。需要立即采取行动减少支出，重新规划预算，以避免更严重的财务问题。\n\n");
+            report.append("Your financial condition is at a critical level. Immediate action is needed to reduce expenses, re-plan your budget, and avoid more serious financial problems.\n\n");
         }
         
-        report.append("## 建议\n\n");
+        report.append("## Recommendations\n\n");
         for (String recommendation : recommendations) {
             report.append("- ").append(recommendation).append("\n");
         }

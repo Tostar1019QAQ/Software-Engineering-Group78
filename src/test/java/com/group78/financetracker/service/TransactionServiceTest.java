@@ -36,11 +36,11 @@ public class TransactionServiceTest {
     
     @BeforeEach
     public void setUp() {
-        // 创建ImportService的mock对象作为参数传入
+        // Create a mock ImportService object as a parameter
         importService = mock(ImportService.class);
         transactionService = new TransactionService(importService);
         
-        // 设置mock对象的行为
+        // Set up the behavior of the mock object
         List<Transaction> testData = new ArrayList<>();
         when(importService.getAllTransactions()).thenReturn(testData);
         
@@ -94,9 +94,9 @@ public class TransactionServiceTest {
      * This test verifies that transactions can be filtered by category
      */
     @Test
-    @Disabled("由于与ImportService的复杂交互逻辑，此测试暂时禁用。代码库中使用了多种方式管理交易数据，需对TransactionService进行重构后使用专用测试数据库解决此问题。")
+    @Disabled("Due to complex interaction logic with ImportService, this test is temporarily disabled. The codebase uses multiple ways to manage transaction data, which requires refactoring TransactionService and using a dedicated test database to solve this issue.")
     public void testGetTransactionsByCategory() {
-        // 直接创建一个新的mock和service
+        // Create a new mock and service directly
         ImportService mockImportService = mock(ImportService.class);
         TransactionService service = new TransactionService(mockImportService);
         
@@ -156,11 +156,11 @@ public class TransactionServiceTest {
      */
     @Test
     public void testGetMonthlyTotals() {
-        // 创建ImportService的新mock并初始化TransactionService
+        // Create a new ImportService mock and initialize TransactionService
         ImportService importService = mock(ImportService.class);
         transactionService = new TransactionService(importService);
         
-        // 创建不同月份的交易数据
+        // Create transaction data for different months
         LocalDateTime currentMonth = LocalDateTime.now().withDayOfMonth(15);
         LocalDateTime lastMonth = currentMonth.minusMonths(1);
         
@@ -201,43 +201,43 @@ public class TransactionServiceTest {
         String currentMonthKey = currentMonth.getYear() + "-" + currentMonth.getMonthValue();
         String lastMonthKey = lastMonth.getYear() + "-" + lastMonth.getMonthValue();
         
-        // 验证当月交易
+        // Verify current month transactions
         List<Transaction> currentMonthTransactions = transactionsByMonth.get(currentMonthKey);
-        assertNotNull(currentMonthTransactions, "当月交易列表不应为空");
-        assertEquals(3, currentMonthTransactions.size(), "当月应有3笔交易");
+        assertNotNull(currentMonthTransactions, "Current month transaction list should not be empty");
+        assertEquals(3, currentMonthTransactions.size(), "Current month should have 3 transactions");
         
-        // 计算当月支出总额
+        // Calculate current month total expenses
         BigDecimal currentMonthExpenses = currentMonthTransactions.stream()
             .filter(t -> t.getType() == TransactionType.EXPENSE)
             .map(Transaction::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
-        assertEquals(0, new BigDecimal("300").compareTo(currentMonthExpenses), "当月支出总额应为300");
+        assertEquals(0, new BigDecimal("300").compareTo(currentMonthExpenses), "Current month total expenses should be 300");
         
-        // 计算当月收入总额
+        // Calculate current month total income
         BigDecimal currentMonthIncome = currentMonthTransactions.stream()
             .filter(t -> t.getType() == TransactionType.INCOME)
             .map(Transaction::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
-        assertEquals(0, new BigDecimal("1000").compareTo(currentMonthIncome), "当月收入总额应为1000");
+        assertEquals(0, new BigDecimal("1000").compareTo(currentMonthIncome), "Current month total income should be 1000");
         
-        // 验证上月交易
+        // Verify last month transactions
         List<Transaction> lastMonthTransactions = transactionsByMonth.get(lastMonthKey);
-        assertNotNull(lastMonthTransactions, "上月交易列表不应为空");
-        assertEquals(2, lastMonthTransactions.size(), "上月应有2笔交易");
+        assertNotNull(lastMonthTransactions, "Last month transaction list should not be empty");
+        assertEquals(2, lastMonthTransactions.size(), "Last month should have 2 transactions");
         
-        // 计算上月支出总额
+        // Calculate last month total expenses
         BigDecimal lastMonthExpenses = lastMonthTransactions.stream()
             .filter(t -> t.getType() == TransactionType.EXPENSE)
             .map(Transaction::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
-        assertEquals(0, new BigDecimal("150").compareTo(lastMonthExpenses), "上月支出总额应为150");
+        assertEquals(0, new BigDecimal("150").compareTo(lastMonthExpenses), "Last month total expenses should be 150");
         
-        // 计算上月收入总额
+        // Calculate last month total income
         BigDecimal lastMonthIncome = lastMonthTransactions.stream()
             .filter(t -> t.getType() == TransactionType.INCOME)
             .map(Transaction::getAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
-        assertEquals(0, new BigDecimal("900").compareTo(lastMonthIncome), "上月收入总额应为900");
+        assertEquals(0, new BigDecimal("900").compareTo(lastMonthIncome), "Last month total income should be 900");
     }
     
     /**

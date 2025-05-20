@@ -9,12 +9,12 @@ import java.time.LocalDate;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * 预算服务测试类
+ * Budget Service Test Class
  * 
- * 测试预算管理功能，包括：
- * - 设置总预算
- * - 获取预算信息
- * - 计算预算使用情况
+ * Tests budget management functionality, including:
+ * - Setting total budget
+ * - Getting budget information
+ * - Calculating budget usage
  */
 public class BudgetServiceTest {
 
@@ -26,36 +26,36 @@ public class BudgetServiceTest {
     }
     
     /**
-     * 测试更新总预算功能
+     * Test for updating total budget functionality
      */
     @Test
     public void testUpdateTotalBudget() {
-        // 设置一个预算值和期限
+        // Set a budget value and period
         BigDecimal budgetAmount = new BigDecimal("5000");
         LocalDate startDate = LocalDate.now();
         LocalDate endDate = LocalDate.now().plusMonths(1);
         
-        // 更新预算
+        // Update budget
         dashboardService.updateTotalBudget(budgetAmount, startDate, endDate);
         
-        // 验证预算值被正确设置
+        // Verify budget value is correctly set
         assertEquals(0, budgetAmount.compareTo(dashboardService.getTotalBudget()),
-            "总预算金额应该被正确设置");
+            "Total budget amount should be set correctly");
         
-        // 验证日期范围被正确设置
+        // Verify date range is correctly set
         assertEquals(startDate, dashboardService.getBudgetStartDate(),
-            "预算开始日期应该被正确设置");
+            "Budget start date should be set correctly");
         assertEquals(endDate, dashboardService.getBudgetEndDate(),
-            "预算结束日期应该被正确设置");
+            "Budget end date should be set correctly");
     }
     
     /**
-     * 测试计算余额功能
+     * Test for calculating balance functionality
      */
     @Test
     public void testCalculateBalance() {
-        // 因为我们使用的是模拟数据，所以总收入和总支出是由测试数据决定的
-        // 在这里我们验证余额计算公式是否正确
+        // Since we use mock data, the total income and expenses are determined by test data
+        // Here we verify that the balance calculation formula is correct
         
         BigDecimal totalIncome = dashboardService.getTotalIncome();
         BigDecimal totalExpenses = dashboardService.getTotalExpenses();
@@ -64,25 +64,25 @@ public class BudgetServiceTest {
         BigDecimal actualBalance = dashboardService.getBalance();
         
         assertEquals(0, expectedBalance.compareTo(actualBalance),
-            "余额应该等于总收入减总支出");
+            "Balance should equal total income minus total expenses");
     }
     
     /**
-     * 测试默认预算值
+     * Test for default budget values
      */
     @Test
     public void testDefaultBudgetValues() {
-        // 重新初始化服务，确保使用默认值
+        // Reinitialize service to ensure default values
         dashboardService = new DashboardService();
         
-        // 验证默认预算值是否为零
+        // Verify default budget value is zero
         assertEquals(0, BigDecimal.ZERO.compareTo(dashboardService.getTotalBudget()),
-            "默认总预算应该为零");
+            "Default total budget should be zero");
         
-        // 验证默认日期值是否为null
+        // Verify default date values are null
         assertNull(dashboardService.getBudgetStartDate(),
-            "默认预算开始日期应该为null");
+            "Default budget start date should be null");
         assertNull(dashboardService.getBudgetEndDate(),
-            "默认预算结束日期应该为null");
+            "Default budget end date should be null");
     }
 } 

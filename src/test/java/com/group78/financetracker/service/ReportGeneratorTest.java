@@ -160,12 +160,10 @@ public class ReportGeneratorTest {
         
         assertNotNull(report, "Report should not be null when exception occurs");
         
-        // 检查是错误报告还是正常报告 - 如果错误报告会包含Error字样，正常报告也可接受
         if (report.contains("Error") || report.contains("error")) {
             assertTrue(report.contains("Failed to generate report") || report.contains("failed") || 
                      report.contains("Test exception"), "Report should explain the failure");
         } else {
-            // 如果不是错误报告，那就应该是正常生成了报告（可能是因为错误处理机制改变）
             assertTrue(report.contains("Cash Flow Forecast"), "Should contain report title");
         }
     }

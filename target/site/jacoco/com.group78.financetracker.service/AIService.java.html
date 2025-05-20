@@ -80,7 +80,7 @@ public class AIService {
             }
 <span class="nc" id="L81">        }</span>
         
-        // 如果关键词匹配失败，使用简单的启发式匹配而不是调用API
+        // If keyword matching fails, use simple heuristic matching instead of calling API
 <span class="nc bnc" id="L84" title="All 8 branches missed.">        if (lowerDesc.contains(&quot;gas&quot;) || lowerDesc.contains(&quot;uber&quot;) || lowerDesc.contains(&quot;bus&quot;) || lowerDesc.contains(&quot;train&quot;)) {</span>
 <span class="nc" id="L85">            return &quot;Transport&quot;;</span>
 <span class="nc bnc" id="L86" title="All 6 branches missed.">        } else if (lowerDesc.contains(&quot;grocery&quot;) || lowerDesc.contains(&quot;restaurant&quot;) || lowerDesc.contains(&quot;cafe&quot;)) {</span>
@@ -94,7 +94,7 @@ public class AIService {
 <span class="nc bnc" id="L94" title="All 6 branches missed.">        } else if (lowerDesc.contains(&quot;school&quot;) || lowerDesc.contains(&quot;book&quot;) || lowerDesc.contains(&quot;course&quot;)) {</span>
 <span class="nc" id="L95">            return &quot;Education&quot;;</span>
         } else {
-<span class="nc" id="L97">            return &quot;Others&quot;; // 默认分类</span>
+<span class="nc" id="L97">            return &quot;Others&quot;; // Default category</span>
         }
     }
     
@@ -151,26 +151,26 @@ public class AIService {
      */
     public String generateFinancialInsights(List&lt;Transaction&gt; transactions) {
 <span class="pc bpc" id="L153" title="1 of 2 branches missed.">        if (transactions.isEmpty()) {</span>
-<span class="nc" id="L154">            return &quot;没有足够的交易数据进行分析。&quot;;</span>
+<span class="nc" id="L154">            return &quot;Not enough transaction data for analysis.&quot;;</span>
         }
         
-        // 使用基本分析替代DeepSeek API调用
+        // Use basic analysis instead of DeepSeek API call
 <span class="fc" id="L158">        Map&lt;String, Object&gt; analysis = analyzeSpendingPattern(transactions);</span>
 <span class="fc" id="L159">        List&lt;String&gt; suggestions = generateBasicSavingsSuggestions(analysis);</span>
         
 <span class="fc" id="L161">        StringBuilder insights = new StringBuilder();</span>
-<span class="fc" id="L162">        insights.append(&quot;财务分析报告:\n\n&quot;);</span>
+<span class="fc" id="L162">        insights.append(&quot;Financial Analysis Report:\n\n&quot;);</span>
         
-        // 添加基本财务指标
+        // Add basic financial metrics
 <span class="fc" id="L165">        BigDecimal totalSpent = (BigDecimal) analysis.get(&quot;totalSpent&quot;);</span>
 <span class="fc" id="L166">        BigDecimal dailyAverage = (BigDecimal) analysis.get(&quot;dailyAverage&quot;);</span>
 <span class="fc" id="L167">        String topCategory = (String) analysis.get(&quot;topCategory&quot;);</span>
         
-<span class="fc" id="L169">        insights.append(&quot;您在 &quot;).append(topCategory).append(&quot; 类别上的支出最高。\n&quot;);</span>
-<span class="fc" id="L170">        insights.append(&quot;平均每日支出为 ¥&quot;).append(dailyAverage.setScale(2, RoundingMode.HALF_UP)).append(&quot;。\n\n&quot;);</span>
+<span class="fc" id="L169">        insights.append(&quot;Your highest spending is in the &quot;).append(topCategory).append(&quot; category.\n&quot;);</span>
+<span class="fc" id="L170">        insights.append(&quot;Your average daily spending is $&quot;).append(dailyAverage.setScale(2, RoundingMode.HALF_UP)).append(&quot;.\n\n&quot;);</span>
         
-        // 添加建议
-<span class="fc" id="L173">        insights.append(&quot;建议:\n&quot;);</span>
+        // Add recommendations
+<span class="fc" id="L173">        insights.append(&quot;Recommendations:\n&quot;);</span>
 <span class="fc bfc" id="L174" title="All 2 branches covered.">        for (String suggestion : suggestions) {</span>
 <span class="fc" id="L175">            insights.append(&quot;- &quot;).append(suggestion).append(&quot;\n&quot;);</span>
 <span class="fc" id="L176">        }</span>
@@ -182,16 +182,16 @@ public class AIService {
      * Generate financial insights from a custom prompt
      */
     public String generateFinancialInsights(String customPrompt) {
-        // 提供固定的财务洞察而不是调用API
+        // Provide fixed financial insights instead of calling API
 <span class="nc" id="L186">        StringBuilder insights = new StringBuilder();</span>
         
-<span class="nc" id="L188">        insights.append(&quot;财务分析:\n\n&quot;);</span>
-<span class="nc" id="L189">        insights.append(&quot;根据您的财务数据，我们建议考虑以下方面的改进:\n&quot;);</span>
-<span class="nc" id="L190">        insights.append(&quot;1. 创建应急基金：建立相当于3-6个月日常开支的储备金。\n&quot;);</span>
-<span class="nc" id="L191">        insights.append(&quot;2. 制定详细预算：跟踪每月支出，找出可以削减的领域。\n&quot;);</span>
-<span class="nc" id="L192">        insights.append(&quot;3. 优化开支结构：尽量将至少20%的收入用于储蓄和投资。\n&quot;);</span>
-<span class="nc" id="L193">        insights.append(&quot;4. 审查固定支出：定期检查各种订阅服务和账单，取消不必要的支出。\n&quot;);</span>
-<span class="nc" id="L194">        insights.append(&quot;5. 设立自动储蓄：每次发薪日自动转移一部分资金到储蓄账户。\n&quot;);</span>
+<span class="nc" id="L188">        insights.append(&quot;Financial Analysis:\n\n&quot;);</span>
+<span class="nc" id="L189">        insights.append(&quot;Based on your financial data, we recommend considering the following improvements:\n&quot;);</span>
+<span class="nc" id="L190">        insights.append(&quot;1. Create an emergency fund: Build a reserve equivalent to 3-6 months of daily expenses.\n&quot;);</span>
+<span class="nc" id="L191">        insights.append(&quot;2. Create a detailed budget: Track monthly spending to identify areas for reduction.\n&quot;);</span>
+<span class="nc" id="L192">        insights.append(&quot;3. Optimize spending structure: Try to allocate at least 20% of income to savings and investments.\n&quot;);</span>
+<span class="nc" id="L193">        insights.append(&quot;4. Review fixed expenses: Regularly check subscription services and bills, cancel unnecessary expenses.\n&quot;);</span>
+<span class="nc" id="L194">        insights.append(&quot;5. Set up automatic savings: Automatically transfer a portion of funds to a savings account on each payday.\n&quot;);</span>
         
 <span class="nc" id="L196">        return insights.toString();</span>
     }
@@ -310,21 +310,21 @@ public class AIService {
 <span class="fc" id="L310">        List&lt;String&gt; recommendations = new ArrayList&lt;&gt;();</span>
         
 <span class="pc bpc" id="L312" title="1 of 2 branches missed.">        if (savingsRate.compareTo(new BigDecimal(&quot;20&quot;)) &lt; 0) {</span>
-<span class="nc" id="L313">            recommendations.add(&quot;增加储蓄率至少达到20%，以确保长期财务安全&quot;);</span>
+<span class="nc" id="L313">            recommendations.add(&quot;Increase savings rate to at least 20% to ensure long-term financial security&quot;);</span>
         }
         
 <span class="pc bpc" id="L316" title="1 of 2 branches missed.">        if (expenseToIncomeRatio.compareTo(new BigDecimal(&quot;0.8&quot;)) &gt; 0) {</span>
-<span class="nc" id="L317">            recommendations.add(&quot;降低支出与收入的比例到80%以下，避免财务紧张&quot;);</span>
+<span class="nc" id="L317">            recommendations.add(&quot;Reduce expense-to-income ratio to below 80% to avoid financial stress&quot;);</span>
         }
         
 <span class="pc bpc" id="L320" title="1 of 2 branches missed.">        if (netSavings.compareTo(BigDecimal.ZERO) &lt;= 0) {</span>
-<span class="nc" id="L321">            recommendations.add(&quot;紧急调整预算，确保收入大于支出，避免负现金流&quot;);</span>
+<span class="nc" id="L321">            recommendations.add(&quot;Urgently adjust budget to ensure income exceeds expenses and avoid negative cash flow&quot;);</span>
         }
         
         // Add general recommendations
-<span class="fc" id="L325">        recommendations.add(&quot;建立相当于3-6个月生活费用的应急基金&quot;);</span>
-<span class="fc" id="L326">        recommendations.add(&quot;定期检查账单和订阅服务，取消不必要的开支&quot;);</span>
-<span class="fc" id="L327">        recommendations.add(&quot;考虑增加额外收入来源，提高整体财务稳定性&quot;);</span>
+<span class="fc" id="L325">        recommendations.add(&quot;Establish an emergency fund equivalent to 3-6 months of living expenses&quot;);</span>
+<span class="fc" id="L326">        recommendations.add(&quot;Regularly review bills and subscription services, cancel unnecessary expenses&quot;);</span>
+<span class="fc" id="L327">        recommendations.add(&quot;Consider adding additional income sources to improve overall financial stability&quot;);</span>
         
         // Populate result map
 <span class="fc" id="L330">        result.put(&quot;score&quot;, finalScore);</span>
@@ -345,7 +345,7 @@ public class AIService {
     public String generateFinancialHealthReport(List&lt;Transaction&gt; transactions) {
 <span class="fc" id="L346">        Map&lt;String, Object&gt; healthScore = calculateFinancialHealthScore(transactions);</span>
         
-        // 创建基本的财务健康报告
+        // Create basic financial health report
 <span class="fc" id="L349">        int score = (int) healthScore.get(&quot;score&quot;);</span>
 <span class="fc" id="L350">        String category = (String) healthScore.get(&quot;category&quot;);</span>
 <span class="fc" id="L351">        BigDecimal savingsRate = (BigDecimal) healthScore.get(&quot;savingsRate&quot;);</span>
@@ -354,27 +354,27 @@ public class AIService {
         @SuppressWarnings(&quot;unchecked&quot;)
 <span class="fc" id="L355">        List&lt;String&gt; recommendations = (List&lt;String&gt;) healthScore.get(&quot;recommendations&quot;);</span>
         
-        // 生成报告
+        // Generate report
 <span class="fc" id="L358">        StringBuilder report = new StringBuilder();</span>
-<span class="fc" id="L359">        report.append(&quot;# 财务健康报告\n\n&quot;);</span>
-<span class="fc" id="L360">        report.append(String.format(&quot;您的财务健康评分: %d/100 (%s)\n\n&quot;, score, category));</span>
-<span class="fc" id="L361">        report.append(String.format(&quot;储蓄率: %.1f%%\n&quot;, savingsRate.doubleValue()));</span>
-<span class="fc" id="L362">        report.append(String.format(&quot;支出占收入比例: %.2f\n\n&quot;, expenseRatio.doubleValue()));</span>
+<span class="fc" id="L359">        report.append(&quot;# Financial Health Report\n\n&quot;);</span>
+<span class="fc" id="L360">        report.append(String.format(&quot;Your Financial Health Score: %d/100 (%s)\n\n&quot;, score, category));</span>
+<span class="fc" id="L361">        report.append(String.format(&quot;Savings Rate: %.1f%%\n&quot;, savingsRate.doubleValue()));</span>
+<span class="fc" id="L362">        report.append(String.format(&quot;Expense-to-Income Ratio: %.2f\n\n&quot;, expenseRatio.doubleValue()));</span>
         
-<span class="fc" id="L364">        report.append(&quot;## 分析\n\n&quot;);</span>
+<span class="fc" id="L364">        report.append(&quot;## Analysis\n\n&quot;);</span>
 <span class="pc bpc" id="L365" title="1 of 2 branches missed.">        if (score &gt;= 80) {</span>
-<span class="fc" id="L366">            report.append(&quot;您的财务状况非常健康。您有良好的储蓄习惯，支出管理得当。继续保持这些良好习惯，将帮助您实现长期财务目标。\n\n&quot;);</span>
+<span class="fc" id="L366">            report.append(&quot;Your financial condition is very healthy. You have good saving habits and manage expenses well. Continuing these good habits will help you achieve long-term financial goals.\n\n&quot;);</span>
 <span class="nc bnc" id="L367" title="All 2 branches missed.">        } else if (score &gt;= 60) {</span>
-<span class="nc" id="L368">            report.append(&quot;您的财务状况良好，但仍有改进空间。增加储蓄或减少非必要支出可以进一步提高您的财务健康。\n\n&quot;);</span>
+<span class="nc" id="L368">            report.append(&quot;Your financial condition is good, but there is still room for improvement. Increasing savings or reducing non-essential expenses can further improve your financial health.\n\n&quot;);</span>
 <span class="nc bnc" id="L369" title="All 2 branches missed.">        } else if (score &gt;= 40) {</span>
-<span class="nc" id="L370">            report.append(&quot;您的财务状况一般，需要注意改进。建议审视您的支出模式，寻找可以削减的领域，并增加储蓄。\n\n&quot;);</span>
+<span class="nc" id="L370">            report.append(&quot;Your financial condition is average and needs improvement. We recommend reviewing your spending patterns, finding areas for reduction, and increasing savings.\n\n&quot;);</span>
 <span class="nc bnc" id="L371" title="All 2 branches missed.">        } else if (score &gt;= 20) {</span>
-<span class="nc" id="L372">            report.append(&quot;您的财务状况需要显著改善。优先考虑减少支出，增加储蓄，并可能需要寻求额外收入来源。\n\n&quot;);</span>
+<span class="nc" id="L372">            report.append(&quot;Your financial condition needs significant improvement. Prioritize reducing expenses, increasing savings, and possibly seeking additional income sources.\n\n&quot;);</span>
         } else {
-<span class="nc" id="L374">            report.append(&quot;您的财务状况处于危急水平。需要立即采取行动减少支出，重新规划预算，以避免更严重的财务问题。\n\n&quot;);</span>
+<span class="nc" id="L374">            report.append(&quot;Your financial condition is at a critical level. Immediate action is needed to reduce expenses, re-plan your budget, and avoid more serious financial problems.\n\n&quot;);</span>
         }
         
-<span class="fc" id="L377">        report.append(&quot;## 建议\n\n&quot;);</span>
+<span class="fc" id="L377">        report.append(&quot;## Recommendations\n\n&quot;);</span>
 <span class="fc bfc" id="L378" title="All 2 branches covered.">        for (String recommendation : recommendations) {</span>
 <span class="fc" id="L379">            report.append(&quot;- &quot;).append(recommendation).append(&quot;\n&quot;);</span>
 <span class="fc" id="L380">        }</span>

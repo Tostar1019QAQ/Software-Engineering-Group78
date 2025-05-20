@@ -14,14 +14,14 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * 账单服务测试类
+ * Bill Service Test Class
  * 
- * 测试账单管理功能，包括：
- * - 添加账单
- * - 获取所有账单
- * - 获取即将到期的账单
- * - 更新账单
- * - 删除账单
+ * Tests bill management functionality, including:
+ * - Adding bills
+ * - Getting all bills
+ * - Getting upcoming bills
+ * - Updating bills
+ * - Deleting bills
  */
 public class BillServiceTest {
 
@@ -33,28 +33,28 @@ public class BillServiceTest {
     }
     
     /**
-     * 测试添加账单功能
+     * Test for adding bills functionality
      */
     @Test
     public void testAddBill() {
-        // 创建一个新账单
+        // Create a new bill
         Bill bill = new Bill(
             null,
-            "租房费用",
+            "Rent Payment",
             new BigDecimal("2000"),
             LocalDate.now().plusDays(15),
-            "支付宝",
+            "Alipay",
             true,
             false
         );
         
-        // 添加账单
+        // Add the bill
         Bill addedBill = billService.addBill(bill);
         
-        // 验证ID被分配
-        assertNotNull(addedBill.getId(), "添加后的账单应该有ID");
+        // Verify ID is assigned
+        assertNotNull(addedBill.getId(), "Added bill should have an ID");
         
-        // 验证账单被成功添加到列表中
+        // Verify the bill is successfully added to the list
         List<Bill> allBills = billService.getAllBills();
         boolean found = false;
         for (Bill b : allBills) {
@@ -63,138 +63,138 @@ public class BillServiceTest {
                 break;
             }
         }
-        assertTrue(found, "添加的账单应该在账单列表中");
+        assertTrue(found, "Added bill should be in the bill list");
     }
     
     /**
-     * 测试获取即将到期的账单
+     * Test for getting upcoming bills
      */
     @Test
     public void testGetUpcomingBills() {
-        // 添加一个即将到期的账单（3天内）
+        // Add a bill that's due soon (within 3 days)
         Bill upcomingBill = new Bill(
             null,
-            "水电费",
+            "Utility Bill",
             new BigDecimal("300"),
             LocalDate.now().plusDays(3),
-            "银行卡",
+            "Bank Card",
             true,
             true
         );
         billService.addBill(upcomingBill);
         
-        // 添加一个未来的账单（30天后）
+        // Add a future bill (30 days later)
         Bill futureBill = new Bill(
             null,
-            "网络费",
+            "Internet Fee",
             new BigDecimal("200"),
             LocalDate.now().plusDays(30),
-            "微信支付",
+            "WeChat Pay",
             false,
             true
         );
         billService.addBill(futureBill);
         
-        // 获取即将到期的账单
+        // Get upcoming bills
         List<Bill> upcomingBills = billService.getUpcomingBills();
         
-        // 验证即将到期的账单在列表中
+        // Verify upcoming bill is in the list
         boolean foundUpcoming = false;
         for (Bill bill : upcomingBills) {
-            if (bill.getName().equals("水电费")) {
+            if (bill.getName().equals("Utility Bill")) {
                 foundUpcoming = true;
-                assertEquals("Due Soon", bill.getStatus(), "即将到期的账单状态应为Due Soon");
+                assertEquals("Due Soon", bill.getStatus(), "Upcoming bill status should be 'Due Soon'");
                 break;
             }
         }
-        assertTrue(foundUpcoming, "即将到期的账单应该在列表中");
+        assertTrue(foundUpcoming, "Upcoming bill should be in the list");
         
-        // 验证未来账单不在即将到期列表中，或者状态为Normal
+        // Verify future bill is not in the upcoming list, or has status Normal
         boolean foundFuture = false;
         for (Bill bill : upcomingBills) {
-            if (bill.getName().equals("网络费")) {
+            if (bill.getName().equals("Internet Fee")) {
                 foundFuture = true;
                 break;
             }
         }
-        // 由于实现可能不同，30天可能也被认为是"即将到期"，所以我们不能确定
-        // foundFuture是true或false，而是检查它的状态
+        // Since implementations may vary, 30 days might also be considered "upcoming"
+        // so we cannot be certain if foundFuture is true or false, but check its status
         if (foundFuture) {
             boolean hasCorrectStatus = false;
             for (Bill bill : upcomingBills) {
-                if (bill.getName().equals("网络费") && bill.getStatus().equals("Normal")) {
+                if (bill.getName().equals("Internet Fee") && bill.getStatus().equals("Normal")) {
                     hasCorrectStatus = true;
                     break;
                 }
             }
-            assertTrue(hasCorrectStatus, "未来账单应该有正确的状态");
+            assertTrue(hasCorrectStatus, "Future bill should have the correct status");
         }
     }
     
     /**
-     * 测试更新账单
+     * Test for updating bills
      */
     @Test
     public void testUpdateBill() {
-        // 添加一个账单
+        // Add a bill
         Bill bill = new Bill(
             null,
-            "手机费",
+            "Phone Bill",
             new BigDecimal("100"),
             LocalDate.now().plusDays(10),
-            "银行卡",
+            "Bank Card",
             false,
             true
         );
         Bill addedBill = billService.addBill(bill);
         
-        // 修改账单
+        // Modify the bill
         addedBill.setAmount(new BigDecimal("150"));
-        addedBill.setName("手机月费");
+        addedBill.setName("Monthly Phone Bill");
         billService.updateBill(addedBill);
         
-        // 验证修改是否成功
+        // Verify the changes were successful
         List<Bill> allBills = billService.getAllBills();
         boolean found = false;
         for (Bill b : allBills) {
             if (b.getId().equals(addedBill.getId())) {
                 found = true;
-                assertEquals("手机月费", b.getName(), "账单名称应该被更新");
-                assertEquals(0, new BigDecimal("150").compareTo(b.getAmount()), "账单金额应该被更新");
+                assertEquals("Monthly Phone Bill", b.getName(), "Bill name should be updated");
+                assertEquals(0, new BigDecimal("150").compareTo(b.getAmount()), "Bill amount should be updated");
                 break;
             }
         }
-        assertTrue(found, "更新后的账单应该在列表中");
+        assertTrue(found, "Updated bill should be in the list");
     }
     
     /**
-     * 测试删除账单
+     * Test for deleting bills
      */
     @Test
     public void testDeleteBill() {
-        // 添加一个账单
+        // Add a bill
         Bill bill = new Bill(
             null,
-            "保险费",
+            "Insurance Fee",
             new BigDecimal("2000"),
             LocalDate.now().plusDays(20),
-            "银行卡",
+            "Bank Card",
             true,
             true
         );
         Bill addedBill = billService.addBill(bill);
         
-        // 记录删除前的数量
+        // Record count before deletion
         int countBefore = billService.getAllBills().size();
         
-        // 删除账单
+        // Delete the bill
         billService.deleteBill(addedBill.getId());
         
-        // 验证账单已被删除
+        // Verify the bill has been deleted
         int countAfter = billService.getAllBills().size();
-        assertEquals(countBefore - 1, countAfter, "删除后账单数量应减少1");
+        assertEquals(countBefore - 1, countAfter, "Bill count should decrease by 1 after deletion");
         
-        // 验证该账单不在列表中
+        // Verify the bill is not in the list
         List<Bill> allBills = billService.getAllBills();
         boolean found = false;
         for (Bill b : allBills) {
@@ -203,6 +203,6 @@ public class BillServiceTest {
                 break;
             }
         }
-        assertFalse(found, "删除的账单不应该在列表中");
+        assertFalse(found, "Deleted bill should not be in the list");
     }
 } 
