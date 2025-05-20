@@ -1,0 +1,539 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BillsPanel.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">finance-tracker</a> &gt; <a href="index.source.html" class="el_package">com.group78.financetracker.ui</a> &gt; <span class="el_source">BillsPanel.java</span></div><h1>BillsPanel.java</h1><pre class="source lang-java linenums">package com.group78.financetracker.ui;
+
+import com.group78.financetracker.model.Bill;
+import com.group78.financetracker.service.BillService;
+import com.toedter.calendar.JDateChooser;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableCellRenderer;
+import java.awt.*;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Date;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+public class BillsPanel extends JPanel {
+    private final BillService billService;
+    private final CardLayout cardLayout;
+    private final JPanel contentPanel;
+    private JPanel formPanel;
+    private JPanel tablePanel;
+    private JPanel alertsPanel;
+    private JTable billsTable;
+    private DefaultTableModel tableModel;
+    
+    // Form fields
+    private JTextField billNameField;
+    private JTextField amountField;
+    private JDateChooser dueDateChooser;
+    private JComboBox&lt;String&gt; paymentMethodCombo;
+    private JCheckBox emailNotificationCheck;
+    private JCheckBox pushNotificationCheck;
+
+<span class="nc" id="L37">    public BillsPanel(CardLayout cardLayout, JPanel contentPanel) {</span>
+<span class="nc" id="L38">        this.cardLayout = cardLayout;</span>
+<span class="nc" id="L39">        this.contentPanel = contentPanel;</span>
+<span class="nc" id="L40">        this.billService = new BillService();</span>
+        
+<span class="nc" id="L42">        setLayout(new BorderLayout(10, 10));</span>
+<span class="nc" id="L43">        setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));</span>
+        
+<span class="nc" id="L45">        createFormPanel();</span>
+<span class="nc" id="L46">        createTablePanel();</span>
+<span class="nc" id="L47">        createAlertsPanel();</span>
+        
+        // Layout components
+<span class="nc" id="L50">        JPanel centerPanel = new JPanel(new BorderLayout(10, 10));</span>
+<span class="nc" id="L51">        centerPanel.add(formPanel, BorderLayout.NORTH);</span>
+<span class="nc" id="L52">        centerPanel.add(tablePanel, BorderLayout.CENTER);</span>
+        
+<span class="nc" id="L54">        add(createHeaderPanel(), BorderLayout.NORTH);</span>
+<span class="nc" id="L55">        add(centerPanel, BorderLayout.CENTER);</span>
+<span class="nc" id="L56">        add(alertsPanel, BorderLayout.EAST);</span>
+        
+        // Load initial data
+<span class="nc" id="L59">        refreshData();</span>
+<span class="nc" id="L60">    }</span>
+
+    private void refreshData() {
+        // Clear existing data
+<span class="nc" id="L64">        tableModel.setRowCount(0);</span>
+        
+        // Load bills from service
+<span class="nc" id="L67">        List&lt;Bill&gt; bills = billService.getAllBills();</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">        for (Bill bill : bills) {</span>
+<span class="nc" id="L69">            addBillToTable(bill);</span>
+<span class="nc" id="L70">        }</span>
+        
+        // Update alerts panel
+<span class="nc" id="L73">        updateAlertsPanel();</span>
+<span class="nc" id="L74">    }</span>
+
+    private void updateAlertsPanel() {
+        // Remove all existing alerts
+<span class="nc" id="L78">        alertsPanel.removeAll();</span>
+<span class="nc" id="L79">        alertsPanel.setLayout(new BorderLayout());</span>
+<span class="nc" id="L80">        alertsPanel.setBorder(BorderFactory.createTitledBorder(&quot;Upcoming Bill Alerts&quot;));</span>
+<span class="nc" id="L81">        alertsPanel.setPreferredSize(new Dimension(250, 0));</span>
+
+<span class="nc" id="L83">        JPanel alertsList = new JPanel();</span>
+<span class="nc" id="L84">        alertsList.setLayout(new BoxLayout(alertsList, BoxLayout.Y_AXIS));</span>
+        
+        // Add alerts for upcoming and overdue bills
+<span class="nc" id="L87">        List&lt;Bill&gt; upcomingBills = billService.getUpcomingBills();</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (upcomingBills.isEmpty()) {</span>
+<span class="nc" id="L89">            JLabel noAlertsLabel = new JLabel(&quot;No upcoming bills&quot;);</span>
+<span class="nc" id="L90">            noAlertsLabel.setAlignmentX(Component.CENTER_ALIGNMENT);</span>
+<span class="nc" id="L91">            alertsList.add(noAlertsLabel);</span>
+<span class="nc" id="L92">        } else {</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">            for (Bill bill : upcomingBills) {</span>
+<span class="nc" id="L94">                alertsList.add(createAlertCard(bill));</span>
+<span class="nc" id="L95">                alertsList.add(Box.createRigidArea(new Dimension(0, 10)));</span>
+<span class="nc" id="L96">            }</span>
+        }
+
+<span class="nc" id="L99">        JScrollPane scrollPane = new JScrollPane(alertsList);</span>
+<span class="nc" id="L100">        scrollPane.setBorder(null);</span>
+<span class="nc" id="L101">        alertsPanel.add(scrollPane, BorderLayout.CENTER);</span>
+<span class="nc" id="L102">        alertsPanel.revalidate();</span>
+<span class="nc" id="L103">        alertsPanel.repaint();</span>
+<span class="nc" id="L104">    }</span>
+
+    private JPanel createHeaderPanel() {
+<span class="nc" id="L107">        JPanel header = new JPanel(new BorderLayout());</span>
+<span class="nc" id="L108">        header.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));</span>
+
+        // Title
+<span class="nc" id="L111">        JLabel titleLabel = new JLabel(&quot;Bill Reminders&quot;);</span>
+<span class="nc" id="L112">        titleLabel.setFont(new Font(&quot;Arial&quot;, Font.BOLD, 24));</span>
+        
+        // Back button
+<span class="nc" id="L115">        JButton backButton = new JButton(&quot;← Back to Dashboard&quot;);</span>
+<span class="nc" id="L116">        backButton.setFocusPainted(false);</span>
+<span class="nc" id="L117">        backButton.addActionListener(e -&gt; cardLayout.show(contentPanel, &quot;Dashboard&quot;));</span>
+        
+<span class="nc" id="L119">        header.add(backButton, BorderLayout.WEST);</span>
+<span class="nc" id="L120">        header.add(titleLabel, BorderLayout.CENTER);</span>
+        
+<span class="nc" id="L122">        return header;</span>
+    }
+
+    private void createFormPanel() {
+<span class="nc" id="L126">        formPanel = new JPanel(new BorderLayout(10, 10));</span>
+<span class="nc" id="L127">        formPanel.setBorder(BorderFactory.createTitledBorder(&quot;Add New Bill&quot;));</span>
+
+        // Input fields panel
+<span class="nc" id="L130">        JPanel inputsPanel = new JPanel(new GridLayout(6, 2, 10, 10));</span>
+        
+        // Bill Name
+<span class="nc" id="L133">        billNameField = new JTextField();</span>
+<span class="nc" id="L134">        inputsPanel.add(new JLabel(&quot;Bill Name:&quot;));</span>
+<span class="nc" id="L135">        inputsPanel.add(billNameField);</span>
+        
+        // Amount
+<span class="nc" id="L138">        amountField = new JTextField();</span>
+<span class="nc" id="L139">        inputsPanel.add(new JLabel(&quot;Amount:&quot;));</span>
+<span class="nc" id="L140">        inputsPanel.add(amountField);</span>
+        
+        // Due Date
+<span class="nc" id="L143">        dueDateChooser = new JDateChooser();</span>
+<span class="nc" id="L144">        dueDateChooser.setDate(new Date());</span>
+<span class="nc" id="L145">        dueDateChooser.setDateFormatString(&quot;yyyy-MM-dd&quot;);</span>
+<span class="nc" id="L146">        inputsPanel.add(new JLabel(&quot;Due Date:&quot;));</span>
+<span class="nc" id="L147">        inputsPanel.add(dueDateChooser);</span>
+        
+        // Payment Method
+<span class="nc" id="L150">        String[] paymentMethods = {&quot;Credit Card&quot;, &quot;Debit Card&quot;, &quot;Bank Transfer&quot;, &quot;Cash&quot;};</span>
+<span class="nc" id="L151">        paymentMethodCombo = new JComboBox&lt;&gt;(paymentMethods);</span>
+<span class="nc" id="L152">        inputsPanel.add(new JLabel(&quot;Payment Method:&quot;));</span>
+<span class="nc" id="L153">        inputsPanel.add(paymentMethodCombo);</span>
+        
+        // Notifications
+<span class="nc" id="L156">        JPanel notificationPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));</span>
+<span class="nc" id="L157">        emailNotificationCheck = new JCheckBox(&quot;Email&quot;);</span>
+<span class="nc" id="L158">        pushNotificationCheck = new JCheckBox(&quot;Push Notification&quot;);</span>
+<span class="nc" id="L159">        notificationPanel.add(emailNotificationCheck);</span>
+<span class="nc" id="L160">        notificationPanel.add(pushNotificationCheck);</span>
+        
+<span class="nc" id="L162">        inputsPanel.add(new JLabel(&quot;Notification Method:&quot;));</span>
+<span class="nc" id="L163">        inputsPanel.add(notificationPanel);</span>
+
+        // Buttons panel
+<span class="nc" id="L166">        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));</span>
+<span class="nc" id="L167">        JButton clearButton = new JButton(&quot;Clear Form&quot;);</span>
+<span class="nc" id="L168">        JButton addButton = new JButton(&quot;Add Bill&quot;);</span>
+        
+<span class="nc" id="L170">        clearButton.addActionListener(e -&gt; clearForm());</span>
+<span class="nc" id="L171">        addButton.addActionListener(e -&gt; addBill());</span>
+        
+<span class="nc" id="L173">        buttonsPanel.add(clearButton);</span>
+<span class="nc" id="L174">        buttonsPanel.add(addButton);</span>
+
+<span class="nc" id="L176">        formPanel.add(inputsPanel, BorderLayout.CENTER);</span>
+<span class="nc" id="L177">        formPanel.add(buttonsPanel, BorderLayout.SOUTH);</span>
+<span class="nc" id="L178">    }</span>
+
+    private void createTablePanel() {
+<span class="nc" id="L181">        tablePanel = new JPanel(new BorderLayout());</span>
+<span class="nc" id="L182">        tablePanel.setBorder(BorderFactory.createTitledBorder(&quot;Upcoming Bills&quot;));</span>
+
+        // Create table model with columns
+<span class="nc" id="L185">        String[] columns = {&quot;Bill Name&quot;, &quot;Amount&quot;, &quot;Due Date&quot;, &quot;Payment Method&quot;, &quot;Edit&quot;, &quot;Delete&quot;, &quot;ID&quot;};</span>
+<span class="nc" id="L186">        tableModel = new DefaultTableModel(columns, 0) {</span>
+            @Override
+            public boolean isCellEditable(int row, int column) {
+<span class="nc bnc" id="L189" title="All 4 branches missed.">                return column == 4 || column == 5; // Only Edit and Delete columns are editable</span>
+            }
+        };
+
+        // Create table
+<span class="nc" id="L194">        billsTable = new JTable(tableModel);</span>
+<span class="nc" id="L195">        billsTable.setRowHeight(30);</span>
+        
+        // 设置按钮渲染器
+<span class="nc" id="L198">        billsTable.getColumnModel().getColumn(4).setCellRenderer(new ButtonRenderer(&quot;Edit&quot;));</span>
+<span class="nc" id="L199">        billsTable.getColumnModel().getColumn(5).setCellRenderer(new ButtonRenderer(&quot;Delete&quot;));</span>
+        
+        // 隐藏ID列
+<span class="nc" id="L202">        billsTable.getColumnModel().getColumn(6).setMinWidth(0);</span>
+<span class="nc" id="L203">        billsTable.getColumnModel().getColumn(6).setMaxWidth(0);</span>
+<span class="nc" id="L204">        billsTable.getColumnModel().getColumn(6).setWidth(0);</span>
+        
+        // Add table to scroll pane
+<span class="nc" id="L207">        JScrollPane scrollPane = new JScrollPane(billsTable);</span>
+<span class="nc" id="L208">        tablePanel.add(scrollPane, BorderLayout.CENTER);</span>
+        
+        // Add mouse listener to handle button clicks
+<span class="nc" id="L211">        billsTable.addMouseListener(new java.awt.event.MouseAdapter() {</span>
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+<span class="nc" id="L214">                int column = billsTable.getColumnModel().getColumnIndexAtX(e.getX());</span>
+<span class="nc" id="L215">                int row = e.getY() / billsTable.getRowHeight();</span>
+                
+<span class="nc bnc" id="L217" title="All 8 branches missed.">                if (row &lt; billsTable.getRowCount() &amp;&amp; row &gt;= 0 &amp;&amp; (column == 4 || column == 5)) {</span>
+                    // 获取该行对应的账单
+<span class="nc" id="L219">                    String billId = (String) billsTable.getValueAt(row, 6); // 隐藏列存储ID</span>
+<span class="nc" id="L220">                    List&lt;Bill&gt; bills = billService.getAllBills();</span>
+<span class="nc" id="L221">                    Bill selectedBill = null;</span>
+                    
+<span class="nc bnc" id="L223" title="All 2 branches missed.">                    for (Bill bill : bills) {</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">                        if (bill.getId().equals(billId)) {</span>
+<span class="nc" id="L225">                            selectedBill = bill;</span>
+<span class="nc" id="L226">                            break;</span>
+                        }
+<span class="nc" id="L228">                    }</span>
+                    
+<span class="nc bnc" id="L230" title="All 2 branches missed.">                    if (selectedBill != null) {</span>
+<span class="nc bnc" id="L231" title="All 2 branches missed.">                        if (column == 4) { // Edit column</span>
+<span class="nc" id="L232">                            editBill(selectedBill);</span>
+<span class="nc bnc" id="L233" title="All 2 branches missed.">                        } else if (column == 5) { // Delete column</span>
+<span class="nc" id="L234">                            deleteBill(selectedBill);</span>
+                        }
+                    }
+                }
+<span class="nc" id="L238">            }</span>
+        });
+<span class="nc" id="L240">    }</span>
+
+    private void addBillToTable(Bill bill) {
+<span class="nc" id="L243">        Object[] rowData = {</span>
+<span class="nc" id="L244">            bill.getName(),</span>
+<span class="nc" id="L245">            &quot;¥&quot; + bill.getAmount().toString(),</span>
+<span class="nc" id="L246">            bill.getDueDate().format(DateTimeFormatter.ISO_LOCAL_DATE),</span>
+<span class="nc" id="L247">            bill.getPaymentMethod(),</span>
+            &quot;Edit&quot;, // 这里只放字符串，由渲染器显示为按钮
+            &quot;Delete&quot;, // 这里只放字符串，由渲染器显示为按钮
+<span class="nc" id="L250">            bill.getId() // 添加隐藏列存储ID</span>
+        };
+<span class="nc" id="L252">        tableModel.addRow(rowData);</span>
+<span class="nc" id="L253">    }</span>
+
+    private JPanel createAlertCard(Bill bill) {
+<span class="nc" id="L256">        JPanel card = new JPanel();</span>
+<span class="nc" id="L257">        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));</span>
+        
+        // 根据状态设置边框颜色
+<span class="nc" id="L260">        Color borderColor = getColorForStatus(bill.getStatus());</span>
+<span class="nc" id="L261">        card.setBorder(BorderFactory.createCompoundBorder(</span>
+<span class="nc" id="L262">            BorderFactory.createLineBorder(borderColor),</span>
+<span class="nc" id="L263">            BorderFactory.createEmptyBorder(10, 10, 10, 10)</span>
+        ));
+<span class="nc" id="L265">        card.setBackground(new Color(255, 255, 255));</span>
+<span class="nc" id="L266">        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));</span>
+
+<span class="nc" id="L268">        JLabel nameLabel = new JLabel(bill.getName());</span>
+<span class="nc" id="L269">        nameLabel.setFont(nameLabel.getFont().deriveFont(Font.BOLD));</span>
+<span class="nc" id="L270">        nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);</span>
+
+<span class="nc" id="L272">        JLabel statusLabel = new JLabel(bill.getStatusDescription());</span>
+<span class="nc" id="L273">        statusLabel.setForeground(borderColor);</span>
+<span class="nc" id="L274">        statusLabel.setAlignmentX(Component.LEFT_ALIGNMENT);</span>
+
+<span class="nc" id="L276">        JLabel amountLabel = new JLabel(&quot;Amount: $&quot; + bill.getAmount().toString());</span>
+<span class="nc" id="L277">        amountLabel.setAlignmentX(Component.LEFT_ALIGNMENT);</span>
+
+<span class="nc" id="L279">        card.add(nameLabel);</span>
+<span class="nc" id="L280">        card.add(Box.createRigidArea(new Dimension(0, 5)));</span>
+<span class="nc" id="L281">        card.add(statusLabel);</span>
+<span class="nc" id="L282">        card.add(Box.createRigidArea(new Dimension(0, 5)));</span>
+<span class="nc" id="L283">        card.add(amountLabel);</span>
+
+<span class="nc" id="L285">        return card;</span>
+    }
+
+    private Color getColorForStatus(String status) {
+<span class="nc bnc" id="L289" title="All 4 branches missed.">        switch (status) {</span>
+            case &quot;Overdue&quot;:
+<span class="nc" id="L291">                return new Color(220, 53, 69);  // Red</span>
+            case &quot;Due Soon&quot;:
+<span class="nc" id="L293">                return new Color(255, 193, 7);  // Yellow</span>
+            case &quot;Upcoming&quot;:
+<span class="nc" id="L295">                return new Color(255, 136, 0);  // Orange</span>
+            default:
+<span class="nc" id="L297">                return new Color(40, 167, 69);  // Green</span>
+        }
+    }
+
+    private void clearForm() {
+<span class="nc" id="L302">        billNameField.setText(&quot;&quot;);</span>
+<span class="nc" id="L303">        amountField.setText(&quot;&quot;);</span>
+<span class="nc" id="L304">        dueDateChooser.setDate(new Date());</span>
+<span class="nc" id="L305">        paymentMethodCombo.setSelectedIndex(0);</span>
+<span class="nc" id="L306">        emailNotificationCheck.setSelected(false);</span>
+<span class="nc" id="L307">        pushNotificationCheck.setSelected(false);</span>
+<span class="nc" id="L308">    }</span>
+
+    private void addBill() {
+        try {
+            // Validate input
+<span class="nc" id="L313">            String billName = billNameField.getText().trim();</span>
+<span class="nc bnc" id="L314" title="All 2 branches missed.">            if (billName.isEmpty()) {</span>
+<span class="nc" id="L315">                showError(&quot;Please enter a bill name.&quot;);</span>
+<span class="nc" id="L316">                return;</span>
+            }
+
+<span class="nc" id="L319">            BigDecimal amount = new BigDecimal(amountField.getText().trim());</span>
+<span class="nc bnc" id="L320" title="All 2 branches missed.">            if (amount.compareTo(BigDecimal.ZERO) &lt;= 0) {</span>
+<span class="nc" id="L321">                showError(&quot;Please enter a valid amount greater than zero.&quot;);</span>
+<span class="nc" id="L322">                return;</span>
+            }
+
+<span class="nc" id="L325">            Date selectedDate = dueDateChooser.getDate();</span>
+<span class="nc bnc" id="L326" title="All 2 branches missed.">            if (selectedDate == null) {</span>
+<span class="nc" id="L327">                showError(&quot;Please select a due date.&quot;);</span>
+<span class="nc" id="L328">                return;</span>
+            }
+
+<span class="nc" id="L331">            LocalDate dueDate = selectedDate.toInstant()</span>
+<span class="nc" id="L332">                .atZone(ZoneId.systemDefault())</span>
+<span class="nc" id="L333">                .toLocalDate();</span>
+            
+            // 验证日期不能是过去的日期
+<span class="nc bnc" id="L336" title="All 2 branches missed.">            if (dueDate.isBefore(LocalDate.now())) {</span>
+<span class="nc" id="L337">                showError(&quot;Due date cannot be in the past.&quot;);</span>
+<span class="nc" id="L338">                return;</span>
+            }
+
+<span class="nc" id="L341">            String paymentMethod = (String) paymentMethodCombo.getSelectedItem();</span>
+            
+            // Create and save new bill
+<span class="nc" id="L344">            Bill bill = new Bill(</span>
+                &quot;&quot;,  // ID will be generated by service
+                billName,
+                amount,
+                dueDate,
+                paymentMethod,
+<span class="nc" id="L350">                emailNotificationCheck.isSelected(),</span>
+<span class="nc" id="L351">                pushNotificationCheck.isSelected()</span>
+            );
+            
+<span class="nc" id="L354">            billService.addBill(bill);</span>
+            
+            // Refresh UI
+<span class="nc" id="L357">            refreshData();</span>
+            
+            // Clear form
+<span class="nc" id="L360">            clearForm();</span>
+
+            // Show success message
+<span class="nc" id="L363">            showSuccess(&quot;Bill added successfully!&quot;);</span>
+
+<span class="nc" id="L365">        } catch (NumberFormatException e) {</span>
+<span class="nc" id="L366">            showError(&quot;Please enter a valid amount.&quot;);</span>
+<span class="nc" id="L367">        }</span>
+<span class="nc" id="L368">    }</span>
+
+    private void editBill(Bill bill) {
+        // 创建表单面板
+<span class="nc" id="L372">        JPanel panel = new JPanel();</span>
+<span class="nc" id="L373">        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));</span>
+<span class="nc" id="L374">        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));</span>
+        
+<span class="nc" id="L376">        JTextField nameField = new JTextField(bill.getName());</span>
+<span class="nc" id="L377">        JTextField amountField = new JTextField(bill.getAmount().toString());</span>
+<span class="nc" id="L378">        JDateChooser dateChooser = new JDateChooser();</span>
+<span class="nc" id="L379">        dateChooser.setDate(Date.from(bill.getDueDate().atStartOfDay(ZoneId.systemDefault()).toInstant()));</span>
+        
+<span class="nc" id="L381">        String[] paymentMethods = {&quot;Credit Card&quot;, &quot;Debit Card&quot;, &quot;Bank Transfer&quot;, &quot;Cash&quot;};</span>
+<span class="nc" id="L382">        JComboBox&lt;String&gt; paymentMethodCombo = new JComboBox&lt;&gt;(paymentMethods);</span>
+<span class="nc" id="L383">        paymentMethodCombo.setSelectedItem(bill.getPaymentMethod());</span>
+        
+<span class="nc" id="L385">        JCheckBox emailCheck = new JCheckBox(&quot;Email Notification&quot;, bill.hasEmailNotification());</span>
+<span class="nc" id="L386">        JCheckBox pushCheck = new JCheckBox(&quot;Push Notification&quot;, bill.hasPushNotification());</span>
+        
+        // 创建输入字段面板
+<span class="nc" id="L389">        JPanel namePanel = new JPanel(new BorderLayout(5, 5));</span>
+<span class="nc" id="L390">        namePanel.add(new JLabel(&quot;Bill Name:&quot;), BorderLayout.NORTH);</span>
+<span class="nc" id="L391">        namePanel.add(nameField, BorderLayout.CENTER);</span>
+        
+<span class="nc" id="L393">        JPanel amountPanel = new JPanel(new BorderLayout(5, 5));</span>
+<span class="nc" id="L394">        amountPanel.add(new JLabel(&quot;Amount:&quot;), BorderLayout.NORTH);</span>
+<span class="nc" id="L395">        amountPanel.add(amountField, BorderLayout.CENTER);</span>
+        
+<span class="nc" id="L397">        JPanel datePanel = new JPanel(new BorderLayout(5, 5));</span>
+<span class="nc" id="L398">        datePanel.add(new JLabel(&quot;Due Date:&quot;), BorderLayout.NORTH);</span>
+<span class="nc" id="L399">        datePanel.add(dateChooser, BorderLayout.CENTER);</span>
+        
+<span class="nc" id="L401">        JPanel methodPanel = new JPanel(new BorderLayout(5, 5));</span>
+<span class="nc" id="L402">        methodPanel.add(new JLabel(&quot;Payment Method:&quot;), BorderLayout.NORTH);</span>
+<span class="nc" id="L403">        methodPanel.add(paymentMethodCombo, BorderLayout.CENTER);</span>
+        
+<span class="nc" id="L405">        JPanel notificationPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));</span>
+<span class="nc" id="L406">        notificationPanel.add(emailCheck);</span>
+<span class="nc" id="L407">        notificationPanel.add(pushCheck);</span>
+        
+        // 添加间距
+<span class="nc" id="L410">        namePanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));</span>
+<span class="nc" id="L411">        amountPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));</span>
+<span class="nc" id="L412">        datePanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));</span>
+<span class="nc" id="L413">        methodPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));</span>
+        
+        // 添加到主面板
+<span class="nc" id="L416">        panel.add(namePanel);</span>
+<span class="nc" id="L417">        panel.add(amountPanel);</span>
+<span class="nc" id="L418">        panel.add(datePanel);</span>
+<span class="nc" id="L419">        panel.add(methodPanel);</span>
+<span class="nc" id="L420">        panel.add(new JLabel(&quot;Notification:&quot;));</span>
+<span class="nc" id="L421">        panel.add(notificationPanel);</span>
+        
+        // 显示对话框
+<span class="nc" id="L424">        int result = JOptionPane.showConfirmDialog(</span>
+            this,
+            panel,
+            &quot;Edit Bill&quot;,
+            JOptionPane.OK_CANCEL_OPTION,
+            JOptionPane.PLAIN_MESSAGE
+        );
+        
+<span class="nc bnc" id="L432" title="All 2 branches missed.">        if (result == JOptionPane.OK_OPTION) {</span>
+            try {
+                // 验证输入
+<span class="nc" id="L435">                String name = nameField.getText().trim();</span>
+<span class="nc bnc" id="L436" title="All 2 branches missed.">                if (name.isEmpty()) {</span>
+<span class="nc" id="L437">                    showError(&quot;Please enter a bill name.&quot;);</span>
+<span class="nc" id="L438">                    return;</span>
+                }
+                
+<span class="nc" id="L441">                BigDecimal amount = new BigDecimal(amountField.getText().trim());</span>
+<span class="nc bnc" id="L442" title="All 2 branches missed.">                if (amount.compareTo(BigDecimal.ZERO) &lt;= 0) {</span>
+<span class="nc" id="L443">                    showError(&quot;Please enter a valid amount greater than zero.&quot;);</span>
+<span class="nc" id="L444">                    return;</span>
+                }
+                
+<span class="nc" id="L447">                Date selectedDate = dateChooser.getDate();</span>
+<span class="nc bnc" id="L448" title="All 2 branches missed.">                if (selectedDate == null) {</span>
+<span class="nc" id="L449">                    showError(&quot;Please select a due date.&quot;);</span>
+<span class="nc" id="L450">                    return;</span>
+                }
+                
+<span class="nc" id="L453">                LocalDate dueDate = selectedDate.toInstant()</span>
+<span class="nc" id="L454">                    .atZone(ZoneId.systemDefault())</span>
+<span class="nc" id="L455">                    .toLocalDate();</span>
+                
+<span class="nc" id="L457">                String paymentMethod = (String) paymentMethodCombo.getSelectedItem();</span>
+                
+                // 创建更新后的账单
+<span class="nc" id="L460">                Bill updatedBill = new Bill(</span>
+<span class="nc" id="L461">                    bill.getId(),</span>
+                    name,
+                    amount,
+                    dueDate,
+                    paymentMethod,
+<span class="nc" id="L466">                    emailCheck.isSelected(),</span>
+<span class="nc" id="L467">                    pushCheck.isSelected()</span>
+                );
+                
+                // 保存更新
+<span class="nc" id="L471">                billService.updateBill(updatedBill);</span>
+                
+                // 刷新界面
+<span class="nc" id="L474">                refreshData();</span>
+                
+                // 显示成功信息
+<span class="nc" id="L477">                showSuccess(&quot;Bill updated successfully!&quot;);</span>
+                
+<span class="nc" id="L479">            } catch (NumberFormatException e) {</span>
+<span class="nc" id="L480">                showError(&quot;Please enter a valid amount.&quot;);</span>
+<span class="nc" id="L481">            }</span>
+        }
+<span class="nc" id="L483">    }</span>
+
+    private void deleteBill(Bill bill) {
+<span class="nc" id="L486">        int confirm = JOptionPane.showConfirmDialog(</span>
+            this,
+            &quot;Are you sure you want to delete this bill?&quot;,
+            &quot;Confirm Delete&quot;,
+            JOptionPane.YES_NO_OPTION
+        );
+        
+<span class="nc bnc" id="L493" title="All 2 branches missed.">        if (confirm == JOptionPane.YES_OPTION) {</span>
+<span class="nc" id="L494">            billService.deleteBill(bill.getId());</span>
+<span class="nc" id="L495">            refreshData();</span>
+<span class="nc" id="L496">            showSuccess(&quot;Bill deleted successfully!&quot;);</span>
+        }
+<span class="nc" id="L498">    }</span>
+
+    private void showError(String message) {
+<span class="nc" id="L501">        JOptionPane.showMessageDialog(</span>
+            this,
+            message,
+            &quot;Error&quot;,
+            JOptionPane.ERROR_MESSAGE
+        );
+<span class="nc" id="L507">    }</span>
+
+    private void showSuccess(String message) {
+<span class="nc" id="L510">        JOptionPane.showMessageDialog(</span>
+            this,
+            message,
+            &quot;Success&quot;,
+            JOptionPane.INFORMATION_MESSAGE
+        );
+<span class="nc" id="L516">    }</span>
+
+    private void createAlertsPanel() {
+<span class="nc" id="L519">        alertsPanel = new JPanel();</span>
+<span class="nc" id="L520">        updateAlertsPanel();</span>
+<span class="nc" id="L521">    }</span>
+
+    // 自定义按钮渲染器
+    private class ButtonRenderer extends JButton implements TableCellRenderer {
+<span class="nc" id="L525">        public ButtonRenderer(String text) {</span>
+<span class="nc" id="L526">            setText(text);</span>
+<span class="nc" id="L527">            setFocusPainted(false);</span>
+<span class="nc" id="L528">            setBorderPainted(true);</span>
+<span class="nc" id="L529">            setOpaque(true);</span>
+<span class="nc" id="L530">        }</span>
+        
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, 
+                boolean isSelected, boolean hasFocus, int row, int column) {
+<span class="nc" id="L535">            return this;</span>
+        }
+    }
+} 
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

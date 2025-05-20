@@ -1,0 +1,903 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AIPanel.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">finance-tracker</a> &gt; <a href="index.source.html" class="el_package">com.group78.financetracker.ui</a> &gt; <span class="el_source">AIPanel.java</span></div><h1>AIPanel.java</h1><pre class="source lang-java linenums">package com.group78.financetracker.ui;
+
+import com.group78.financetracker.model.Transaction;
+import com.group78.financetracker.service.AIService;
+import com.group78.financetracker.service.ReportGenerator;
+import com.group78.financetracker.service.TransactionService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
+import javax.swing.text.html.HTMLEditorKit;
+import javax.swing.text.html.StyleSheet;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.io.File;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.regex.Pattern;
+import java.util.HashMap;
+import java.util.Set;
+import java.util.HashSet;
+
+/**
+ * Panel for AI-related features, including transaction analysis, spending pattern analysis,
+ * and a chat interface for financial questions.
+ */
+public class AIPanel extends JPanel {
+<span class="nc" id="L38">    private static final Logger logger = LoggerFactory.getLogger(AIPanel.class);</span>
+    
+    private final AIService aiService;
+    private final TransactionService transactionService;
+    
+    private JEditorPane resultPane;
+    private JButton analyzeButton;
+    private JButton sendButton;
+    private JLabel statusLabel;
+    private JTextField apiKeyField;
+    private JPanel settingsPanel;
+    private JComboBox&lt;String&gt; analysisTypeComboBox;
+    private JTextArea userInputArea;
+    private List&lt;String&gt; chatHistory;
+    
+    // Financial and bill-related keywords used to filter questions
+<span class="nc" id="L54">    private static final List&lt;String&gt; FINANCE_KEYWORDS = Arrays.asList(</span>
+        &quot;bill&quot;, &quot;account&quot;, &quot;payment&quot;, &quot;expense&quot;, &quot;income&quot;, 
+        &quot;budget&quot;, &quot;finance&quot;, &quot;financial&quot;, &quot;money&quot;, &quot;savings&quot;, 
+        &quot;debt&quot;, &quot;invest&quot;, &quot;spend&quot;, &quot;transaction&quot;, &quot;bank&quot;, 
+        &quot;credit&quot;, &quot;loan&quot;, &quot;pay&quot;, &quot;balance&quot;, &quot;asset&quot;, &quot;liability&quot;,
+        &quot;interest&quot;, &quot;mortgage&quot;, &quot;investment&quot;, &quot;salary&quot;, &quot;earnings&quot;,
+        &quot;fees&quot;, &quot;tax&quot;, &quot;insurance&quot;, &quot;retirement&quot;, &quot;saving&quot;
+    );
+    
+    // Regular expression pattern to check if a question contains financial keywords
+<span class="nc" id="L64">    private static final Pattern FINANCE_PATTERN = Pattern.compile(</span>
+<span class="nc" id="L65">        &quot;(&quot; + String.join(&quot;|&quot;, FINANCE_KEYWORDS) + &quot;)&quot;, </span>
+        Pattern.CASE_INSENSITIVE
+    );
+    
+<span class="nc" id="L69">    public AIPanel(AIService aiService, TransactionService transactionService) {</span>
+<span class="nc" id="L70">        this.aiService = aiService;</span>
+<span class="nc" id="L71">        this.transactionService = transactionService;</span>
+<span class="nc" id="L72">        this.chatHistory = new ArrayList&lt;&gt;();</span>
+        
+<span class="nc" id="L74">        setLayout(new BorderLayout(10, 10));</span>
+<span class="nc" id="L75">        setBorder(new EmptyBorder(20, 20, 20, 20));</span>
+        
+<span class="nc" id="L77">        initComponents();</span>
+<span class="nc" id="L78">        layoutComponents();</span>
+<span class="nc" id="L79">    }</span>
+    
+    private void initComponents() {
+        // Results display area with HTML support
+<span class="nc" id="L83">        resultPane = new JEditorPane();</span>
+<span class="nc" id="L84">        resultPane.setEditable(false);</span>
+<span class="nc" id="L85">        resultPane.setContentType(&quot;text/html&quot;);</span>
+        
+        // Configure HTML styling
+<span class="nc" id="L88">        HTMLEditorKit kit = new HTMLEditorKit();</span>
+<span class="nc" id="L89">        resultPane.setEditorKit(kit);</span>
+        
+        // Create and set up a stylesheet
+<span class="nc" id="L92">        StyleSheet styleSheet = kit.getStyleSheet();</span>
+<span class="nc" id="L93">        styleSheet.addRule(&quot;body {font-family: 'Segoe UI', Arial, sans-serif; font-size: 16px; margin: 10px;}&quot;);</span>
+<span class="nc" id="L94">        styleSheet.addRule(&quot;h1 {color: #2962FF; font-size: 24px; margin-top: 20px; margin-bottom: 10px;}&quot;);</span>
+<span class="nc" id="L95">        styleSheet.addRule(&quot;h2 {color: #0277BD; font-size: 22px; margin-top: 15px; margin-bottom: 8px;}&quot;);</span>
+<span class="nc" id="L96">        styleSheet.addRule(&quot;h3 {color: #0288D1; font-size: 20px; font-weight: bold; margin-top: 12px; margin-bottom: 6px;}&quot;);</span>
+<span class="nc" id="L97">        styleSheet.addRule(&quot;p {margin-top: 8px; margin-bottom: 8px; font-size: 16px;}&quot;);</span>
+<span class="nc" id="L98">        styleSheet.addRule(&quot;.highlight {background-color: #E1F5FE; padding: 8px; border-left: 3px solid #0288D1; font-size: 16px;}&quot;);</span>
+<span class="nc" id="L99">        styleSheet.addRule(&quot;.expense {color: #D32F2F; font-size: 16px;}&quot;);</span>
+<span class="nc" id="L100">        styleSheet.addRule(&quot;.income {color: #388E3C; font-size: 16px;}&quot;);</span>
+<span class="nc" id="L101">        styleSheet.addRule(&quot;.user-message {color: #2962FF; font-weight: bold; margin-top: 15px;}&quot;);</span>
+<span class="nc" id="L102">        styleSheet.addRule(&quot;.ai-message {color: #333; margin-bottom: 15px;}&quot;);</span>
+<span class="nc" id="L103">        styleSheet.addRule(&quot;.error-message {color: #D32F2F; font-weight: bold;}&quot;);</span>
+<span class="nc" id="L104">        styleSheet.addRule(&quot;.loading {font-style: italic; color: #0288D1;}&quot;);</span>
+<span class="nc" id="L105">        styleSheet.addRule(&quot;.dot-one, .dot-two, .dot-three {font-weight: bold;}&quot;);</span>
+<span class="nc" id="L106">        styleSheet.addRule(&quot;table {border-collapse: collapse; width: 100%; font-size: 16px;}&quot;);</span>
+<span class="nc" id="L107">        styleSheet.addRule(&quot;th {background-color: #E3F2FD; padding: 10px; text-align: left; border-bottom: 2px solid #90CAF9; font-size: 18px;}&quot;);</span>
+<span class="nc" id="L108">        styleSheet.addRule(&quot;td {padding: 8px; border-bottom: 1px solid #E0E0E0; font-size: 16px;}&quot;);</span>
+<span class="nc" id="L109">        styleSheet.addRule(&quot;tr:nth-child(even) {background-color: #F5F5F5;}&quot;);</span>
+        
+        // Initialize with welcome message
+<span class="nc" id="L112">        resultPane.setText(&quot;&lt;html&gt;&lt;body&gt;&lt;h1&gt;AI Financial Assistant&lt;/h1&gt;&quot; +</span>
+                &quot;&lt;p&gt;Hello! I'm your AI financial assistant. You can ask me about:&lt;/p&gt;&quot; +
+                &quot;&lt;ul&gt;&quot; +
+                &quot;&lt;li&gt;Bill analysis and recommendations&lt;/li&gt;&quot; +
+                &quot;&lt;li&gt;Spending patterns and habits&lt;/li&gt;&quot; +
+                &quot;&lt;li&gt;Budget management and savings plans&lt;/li&gt;&quot; +
+                &quot;&lt;li&gt;Personal finance strategies&lt;/li&gt;&quot; +
+                &quot;&lt;/ul&gt;&quot; +
+                &quot;&lt;p class='highlight'&gt;Note: I can only answer questions related to your finances.&lt;/p&gt;&quot; +
+                &quot;&lt;/body&gt;&lt;/html&gt;&quot;);
+        
+        // Analysis type selection
+<span class="nc" id="L124">        analysisTypeComboBox = new JComboBox&lt;&gt;(new String[]{</span>
+            &quot;Smart Financial Analysis &amp; Recommendations&quot;,
+            &quot;Spending Pattern Analysis&quot;,
+            &quot;Financial Health Score&quot;,
+            &quot;Auto-categorization Examples&quot;,
+            &quot;Income-Expense Report&quot;,
+            &quot;Cash Flow Forecast&quot;,
+            &quot;Smart Savings Recommendations&quot;
+        });
+        
+        // Analyze button
+<span class="nc" id="L135">        analyzeButton = new JButton(&quot;Start Analysis&quot;);</span>
+<span class="nc" id="L136">        analyzeButton.addActionListener(this::handleAnalyzeButtonClick);</span>
+        
+        // User input components
+<span class="nc" id="L139">        userInputArea = new JTextArea(3, 20);</span>
+<span class="nc" id="L140">        userInputArea.setLineWrap(true);</span>
+<span class="nc" id="L141">        userInputArea.setWrapStyleWord(true);</span>
+<span class="nc" id="L142">        userInputArea.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));</span>
+        
+        // Send button
+<span class="nc" id="L145">        sendButton = new JButton(&quot;Send&quot;);</span>
+<span class="nc" id="L146">        sendButton.addActionListener(this::handleSendButtonClick);</span>
+        
+        // Status label
+<span class="nc" id="L149">        statusLabel = new JLabel(&quot;Ready&quot;);</span>
+<span class="nc" id="L150">        statusLabel.setForeground(Color.GRAY);</span>
+        
+        // API settings area
+<span class="nc" id="L153">        apiKeyField = new JTextField(20);</span>
+<span class="nc" id="L154">        apiKeyField.setText(&quot;sk-5437453fe5544771b8ca5196cfac9bc5&quot;);  // Pre-populate with the provided API key</span>
+<span class="nc" id="L155">        JButton saveApiKeyButton = new JButton(&quot;Save API Key&quot;);</span>
+<span class="nc" id="L156">        saveApiKeyButton.addActionListener(e -&gt; {</span>
+<span class="nc" id="L157">            aiService.setApiKey(apiKeyField.getText().trim());</span>
+<span class="nc" id="L158">            JOptionPane.showMessageDialog(this, &quot;API key updated&quot;, &quot;Settings Saved&quot;, JOptionPane.INFORMATION_MESSAGE);</span>
+<span class="nc" id="L159">        });</span>
+        
+        // Settings panel
+<span class="nc" id="L162">        settingsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));</span>
+<span class="nc" id="L163">        settingsPanel.setBorder(BorderFactory.createTitledBorder(</span>
+<span class="nc" id="L164">            BorderFactory.createEtchedBorder(), </span>
+            &quot;DeepSeek API Settings&quot;, 
+            TitledBorder.LEFT, 
+            TitledBorder.TOP
+        ));
+        
+<span class="nc" id="L170">        JLabel apiKeyLabel = new JLabel(&quot;API Key:&quot;);</span>
+<span class="nc" id="L171">        settingsPanel.add(apiKeyLabel);</span>
+<span class="nc" id="L172">        settingsPanel.add(apiKeyField);</span>
+<span class="nc" id="L173">        settingsPanel.add(saveApiKeyButton);</span>
+<span class="nc" id="L174">    }</span>
+    
+    private void layoutComponents() {
+        // Top control area
+<span class="nc" id="L178">        JPanel controlPanel = new JPanel(new BorderLayout(10, 10));</span>
+        
+<span class="nc" id="L180">        JPanel analysisPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));</span>
+<span class="nc" id="L181">        analysisPanel.add(new JLabel(&quot;Analysis Type:&quot;));</span>
+<span class="nc" id="L182">        analysisPanel.add(analysisTypeComboBox);</span>
+<span class="nc" id="L183">        analysisPanel.add(analyzeButton);</span>
+        
+<span class="nc" id="L185">        controlPanel.add(analysisPanel, BorderLayout.NORTH);</span>
+<span class="nc" id="L186">        controlPanel.add(settingsPanel, BorderLayout.CENTER);</span>
+<span class="nc" id="L187">        controlPanel.add(statusLabel, BorderLayout.SOUTH);</span>
+        
+        // Results area
+<span class="nc" id="L190">        JScrollPane resultScrollPane = new JScrollPane(resultPane);</span>
+<span class="nc" id="L191">        resultScrollPane.setBorder(BorderFactory.createTitledBorder(</span>
+<span class="nc" id="L192">            BorderFactory.createEtchedBorder(), </span>
+            &quot;AI Assistant&quot;, 
+            TitledBorder.LEFT, 
+            TitledBorder.TOP
+        ));
+<span class="nc" id="L197">        resultScrollPane.setPreferredSize(new Dimension(800, 350));</span>
+        
+        // Chat input area
+<span class="nc" id="L200">        JPanel chatInputPanel = new JPanel(new BorderLayout(5, 0));</span>
+<span class="nc" id="L201">        chatInputPanel.setBorder(BorderFactory.createTitledBorder(</span>
+<span class="nc" id="L202">            BorderFactory.createEtchedBorder(), </span>
+            &quot;Ask a Question&quot;, 
+            TitledBorder.LEFT, 
+            TitledBorder.TOP
+        ));
+        
+<span class="nc" id="L208">        JScrollPane inputScrollPane = new JScrollPane(userInputArea);</span>
+<span class="nc" id="L209">        chatInputPanel.add(inputScrollPane, BorderLayout.CENTER);</span>
+<span class="nc" id="L210">        chatInputPanel.add(sendButton, BorderLayout.EAST);</span>
+        
+        // Create a panel to organize the chat area
+<span class="nc" id="L213">        JPanel chatPanel = new JPanel(new BorderLayout(0, 10));</span>
+<span class="nc" id="L214">        chatPanel.add(resultScrollPane, BorderLayout.CENTER);</span>
+<span class="nc" id="L215">        chatPanel.add(chatInputPanel, BorderLayout.SOUTH);</span>
+        
+        // Add to main panel
+<span class="nc" id="L218">        add(controlPanel, BorderLayout.NORTH);</span>
+<span class="nc" id="L219">        add(chatPanel, BorderLayout.CENTER);</span>
+        
+        // Info panel
+<span class="nc" id="L222">        JPanel infoPanel = new JPanel(new BorderLayout());</span>
+<span class="nc" id="L223">        infoPanel.setBorder(BorderFactory.createTitledBorder(</span>
+<span class="nc" id="L224">            BorderFactory.createEtchedBorder(), </span>
+            &quot;About AI Analysis&quot;, 
+            TitledBorder.LEFT, 
+            TitledBorder.TOP
+        ));
+        
+<span class="nc" id="L230">        JTextArea infoTextArea = new JTextArea(</span>
+            &quot;This feature uses DeepSeek AI to analyze your transaction data and provide personalized financial insights.\n&quot; + 
+            &quot;For advanced features, configure your DeepSeek API key. Basic analysis will be used if no API key is provided.\n&quot; +
+            &quot;DeepSeek AI helps you understand spending patterns, discover potential savings, and provides targeted financial advice.&quot;
+        );
+<span class="nc" id="L235">        infoTextArea.setEditable(false);</span>
+<span class="nc" id="L236">        infoTextArea.setBackground(UIManager.getColor(&quot;Panel.background&quot;));</span>
+<span class="nc" id="L237">        infoTextArea.setFont(new Font(&quot;Segoe UI&quot;, Font.ITALIC, 12));</span>
+<span class="nc" id="L238">        infoTextArea.setBorder(new EmptyBorder(5, 5, 5, 5));</span>
+<span class="nc" id="L239">        infoTextArea.setLineWrap(true);</span>
+<span class="nc" id="L240">        infoTextArea.setWrapStyleWord(true);</span>
+        
+<span class="nc" id="L242">        infoPanel.add(infoTextArea, BorderLayout.CENTER);</span>
+        
+<span class="nc" id="L244">        add(infoPanel, BorderLayout.SOUTH);</span>
+<span class="nc" id="L245">    }</span>
+    
+    /**
+     * Handle send button click event
+     */
+    private void handleSendButtonClick(ActionEvent e) {
+<span class="nc" id="L251">        String userQuestion = userInputArea.getText().trim();</span>
+<span class="nc bnc" id="L252" title="All 2 branches missed.">        if (userQuestion.isEmpty()) {</span>
+<span class="nc" id="L253">            return;</span>
+        }
+
+        // Add user question to result pane
+<span class="nc" id="L257">        appendToResultPane(&quot;&lt;p class='user-message'&gt;You: &quot; + userQuestion + &quot;&lt;/p&gt;&quot;);</span>
+<span class="nc" id="L258">        userInputArea.setText(&quot;&quot;);</span>
+        
+        // Check if we need special handling for bill or budget related questions
+<span class="nc" id="L261">        boolean needsVisualization = isBillOrBudgetQuestion(userQuestion);</span>
+        
+        // Create context builder
+<span class="nc" id="L264">        StringBuilder contextBuilder = new StringBuilder();</span>
+<span class="nc" id="L265">        contextBuilder.append(&quot;You are a financial assistant AI. You can only answer questions related to finance, budgeting, investments, or user's transaction data. &quot;);</span>
+<span class="nc" id="L266">        contextBuilder.append(&quot;If a question is not related to finance or user's financial data, please politely explain that you can only assist with finance-related matters and decline to answer.\n\n&quot;);</span>
+        
+        // Create mapping between file types and keywords
+<span class="nc" id="L269">        Map&lt;String, List&lt;String&gt;&gt; fileTypeKeywords = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L270">        fileTypeKeywords.put(&quot;budget.csv&quot;, Arrays.asList(&quot;budget&quot;, &quot;remaining budget&quot;, &quot;total budget&quot;));</span>
+<span class="nc" id="L271">        fileTypeKeywords.put(&quot;bills.csv&quot;, Arrays.asList(&quot;bill&quot;, &quot;bills&quot;, &quot;payment&quot;, &quot;pay&quot;, &quot;due date&quot;));</span>
+<span class="nc" id="L272">        fileTypeKeywords.put(&quot;default_transactions.csv&quot;, Arrays.asList(&quot;transaction&quot;, &quot;spending&quot;, &quot;history&quot;));</span>
+        
+        // Determine which files to include
+<span class="nc" id="L275">        Set&lt;String&gt; filesToInclude = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L276">        String lowerCaseQuestion = userQuestion.toLowerCase();</span>
+        
+        // Always include budget and bills files by default
+<span class="nc" id="L279">        filesToInclude.add(&quot;budget.csv&quot;);</span>
+<span class="nc" id="L280">        filesToInclude.add(&quot;bills.csv&quot;);</span>
+        
+        // Include transaction data file based on question keywords
+<span class="nc bnc" id="L283" title="All 2 branches missed.">        for (Map.Entry&lt;String, List&lt;String&gt;&gt; entry : fileTypeKeywords.entrySet()) {</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">            for (String keyword : entry.getValue()) {</span>
+<span class="nc bnc" id="L285" title="All 2 branches missed.">                if (lowerCaseQuestion.contains(keyword.toLowerCase())) {</span>
+<span class="nc" id="L286">                    filesToInclude.add(entry.getKey());</span>
+<span class="nc" id="L287">                    break;</span>
+                }
+<span class="nc" id="L289">            }</span>
+<span class="nc" id="L290">        }</span>
+        
+        // Add data files as context, now only including files relevant to the question
+        try {
+<span class="nc" id="L294">            File dataDir = new File(&quot;data&quot;);</span>
+<span class="nc bnc" id="L295" title="All 4 branches missed.">            if (dataDir.exists() &amp;&amp; dataDir.isDirectory()) {</span>
+<span class="nc" id="L296">                File[] files = dataDir.listFiles();</span>
+<span class="nc bnc" id="L297" title="All 2 branches missed.">                if (files != null) {</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">                    for (File file : files) {</span>
+<span class="nc bnc" id="L299" title="All 4 branches missed.">                        if (file.isFile() &amp;&amp; (filesToInclude.contains(file.getName()) || </span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">                                             filesToInclude.isEmpty())) { // If no matching keywords, include all files</span>
+<span class="nc" id="L301">                            contextBuilder.append(&quot;Contents of file &quot;).append(file.getName()).append(&quot;:\n&quot;);</span>
+                            
+                            // Limit the number of lines read for large files
+<span class="nc" id="L304">                            List&lt;String&gt; lines = Files.readAllLines(file.toPath());</span>
+<span class="nc bnc" id="L305" title="All 2 branches missed.">                            int maxLines = file.getName().equals(&quot;default_transactions.csv&quot;) ? 30 : lines.size(); // Limit large files</span>
+                            
+<span class="nc bnc" id="L307" title="All 2 branches missed.">                            for (int i = 0; i &lt; Math.min(maxLines, lines.size()); i++) {</span>
+<span class="nc" id="L308">                                contextBuilder.append(lines.get(i)).append(&quot;\n&quot;);</span>
+                            }
+                            
+<span class="nc bnc" id="L311" title="All 2 branches missed.">                            if (lines.size() &gt; maxLines) {</span>
+<span class="nc" id="L312">                                contextBuilder.append(&quot;... (file contains more data, omitted) ...\n&quot;);</span>
+                            }
+                            
+<span class="nc" id="L315">                            contextBuilder.append(&quot;\n&quot;);</span>
+                        }
+                    }
+                }
+            }
+<span class="nc" id="L320">        } catch (IOException ex) {</span>
+<span class="nc" id="L321">            logger.error(&quot;Error reading data files: &quot; + ex.getMessage());</span>
+<span class="nc" id="L322">        }</span>
+        
+        // Add user question to context
+<span class="nc" id="L325">        contextBuilder.append(&quot;User question: &quot;).append(userQuestion);</span>
+        
+        // If special handling for bill and budget data is needed, add relevant hints
+<span class="nc bnc" id="L328" title="All 2 branches missed.">        if (needsVisualization) {</span>
+<span class="nc" id="L329">            contextBuilder.append(&quot;\n\nPlease provide a concise analysis of bills and budget, as we've already generated visualization tables for the user.&quot;);</span>
+        }
+        
+<span class="nc" id="L332">        String context = contextBuilder.toString();</span>
+        
+        // Show loading indicator
+<span class="nc" id="L335">        appendToResultPane(&quot;&lt;p class='loading'&gt;AI thinking&lt;span class='dot-one'&gt;.&lt;/span&gt;&lt;span class='dot-two'&gt;.&lt;/span&gt;&lt;span class='dot-three'&gt;.&lt;/span&gt;&lt;/p&gt;&quot;);</span>
+        
+        // Create new thread to handle API call
+<span class="nc" id="L338">        new Thread(() -&gt; {</span>
+            String response;
+            try {
+                // Use AIService to generate response
+<span class="nc" id="L342">                response = aiService.generateFinancialInsights(context);</span>
+                
+                // Update UI in EDT
+<span class="nc" id="L345">                SwingUtilities.invokeLater(() -&gt; {</span>
+                    // Remove loading message
+<span class="nc" id="L347">                    String currentContent = resultPane.getText();</span>
+<span class="nc" id="L348">                    String newContent = currentContent.replaceAll(</span>
+                        &quot;&lt;p class=['\&quot;]loading['\&quot;]&gt;AI thinking&lt;span class=['\&quot;]dot-one['\&quot;]&gt;\\.&lt;/span&gt;&lt;span class=['\&quot;]dot-two['\&quot;]&gt;\\.&lt;/span&gt;&lt;span class=['\&quot;]dot-three['\&quot;]&gt;\\.&lt;/span&gt;&lt;/p&gt;&quot;, 
+                        &quot;&quot;
+                    );
+<span class="nc" id="L352">                    resultPane.setText(newContent);</span>
+                    
+                    // If this is a bill or budget related question, add visualization content
+<span class="nc bnc" id="L355" title="All 2 branches missed.">                    if (needsVisualization) {</span>
+<span class="nc" id="L356">                        String visualization = createBillBudgetVisualization();</span>
+<span class="nc" id="L357">                        appendToResultPane(&quot;&lt;div class='visualization'&gt;&quot; + visualization + &quot;&lt;/div&gt;&quot;);</span>
+                    }
+                    
+                    // Add AI response to result pane
+<span class="nc" id="L361">                    appendToResultPane(&quot;&lt;p class='ai-message'&gt;AI: &quot; + response + &quot;&lt;/p&gt;&quot;);</span>
+<span class="nc" id="L362">                });</span>
+<span class="nc" id="L363">            } catch (Exception ex) {</span>
+<span class="nc" id="L364">                logger.error(&quot;Error generating AI response: &quot; + ex.getMessage());</span>
+<span class="nc" id="L365">                SwingUtilities.invokeLater(() -&gt; {</span>
+                    // Remove loading message
+<span class="nc" id="L367">                    String currentContent = resultPane.getText();</span>
+<span class="nc" id="L368">                    String newContent = currentContent.replaceAll(</span>
+                        &quot;&lt;p class=['\&quot;]loading['\&quot;]&gt;AI thinking&lt;span class=['\&quot;]dot-one['\&quot;]&gt;\\.&lt;/span&gt;&lt;span class=['\&quot;]dot-two['\&quot;]&gt;\\.&lt;/span&gt;&lt;span class=['\&quot;]dot-three['\&quot;]&gt;\\.&lt;/span&gt;&lt;/p&gt;&quot;, 
+                        &quot;&quot;
+                    );
+<span class="nc" id="L372">                    resultPane.setText(newContent);</span>
+                    
+                    // Add error message
+<span class="nc" id="L375">                    appendToResultPane(&quot;&lt;p class='error-message'&gt;AI: Error processing your request. Please try again later.&lt;/p&gt;&quot;);</span>
+<span class="nc" id="L376">                });</span>
+<span class="nc" id="L377">            }</span>
+<span class="nc" id="L378">        }).start();</span>
+<span class="nc" id="L379">    }</span>
+    
+    /**
+     * Check if the question is related to finance
+     */
+    private boolean isFinanceRelatedQuestion(String question) {
+<span class="nc" id="L385">        return FINANCE_PATTERN.matcher(question).find();</span>
+    }
+    
+    /**
+     * Detect if the question is related to bills or budget
+     */
+    private boolean isBillOrBudgetQuestion(String question) {
+<span class="nc" id="L392">        String lowerCase = question.toLowerCase();</span>
+<span class="nc bnc" id="L393" title="All 4 branches missed.">        return lowerCase.contains(&quot;bill&quot;) || lowerCase.contains(&quot;budget&quot;) || </span>
+<span class="nc bnc" id="L394" title="All 4 branches missed.">               lowerCase.contains(&quot;payment&quot;) || lowerCase.contains(&quot;due&quot;) || </span>
+<span class="nc bnc" id="L395" title="All 2 branches missed.">               lowerCase.contains(&quot;remaining&quot;);</span>
+    }
+    
+    /**
+     * Read contents of a specific data file from the data directory, returns empty list if file doesn't exist
+     */
+    private List&lt;String&gt; readDataFile(String fileName) {
+        try {
+<span class="nc" id="L403">            File file = new File(&quot;data/&quot; + fileName);</span>
+<span class="nc bnc" id="L404" title="All 2 branches missed.">            if (file.exists()) {</span>
+<span class="nc" id="L405">                return Files.readAllLines(file.toPath());</span>
+            }
+<span class="nc" id="L407">        } catch (IOException e) {</span>
+<span class="nc" id="L408">            logger.error(&quot;Error reading file {}: {}&quot;, fileName, e.getMessage());</span>
+<span class="nc" id="L409">        }</span>
+<span class="nc" id="L410">        return new ArrayList&lt;&gt;();</span>
+    }
+    
+    /**
+     * Create visualization for bill and budget related questions
+     */
+    private String createBillBudgetVisualization() {
+<span class="nc" id="L417">        StringBuilder analysisResult = new StringBuilder();</span>
+<span class="nc" id="L418">        analysisResult.append(&quot;&lt;h2&gt;Bills and Budget Analysis&lt;/h2&gt;&quot;);</span>
+        
+        // Read bill data
+<span class="nc" id="L421">        List&lt;String&gt; billLines = readDataFile(&quot;bills.csv&quot;);</span>
+<span class="nc bnc" id="L422" title="All 2 branches missed.">        if (!billLines.isEmpty()) {</span>
+<span class="nc" id="L423">            analysisResult.append(&quot;&lt;h3&gt;Bill Status&lt;/h3&gt;&quot;);</span>
+<span class="nc" id="L424">            analysisResult.append(&quot;&lt;table border='1' style='width:100%; border-collapse:collapse;'&gt;&quot;);</span>
+<span class="nc" id="L425">            analysisResult.append(&quot;&lt;tr style='background-color:#f2f2f2;'&gt;&lt;th&gt;Name&lt;/th&gt;&lt;th&gt;Amount&lt;/th&gt;&lt;th&gt;Due Date&lt;/th&gt;&lt;th&gt;Status&lt;/th&gt;&lt;/tr&gt;&quot;);</span>
+            
+<span class="nc" id="L427">            int overdue = 0;</span>
+<span class="nc" id="L428">            int dueSoon = 0;</span>
+<span class="nc" id="L429">            int upcoming = 0;</span>
+<span class="nc" id="L430">            int total = 0;</span>
+            
+            // Skip header line
+<span class="nc bnc" id="L433" title="All 2 branches missed.">            for (int i = 1; i &lt; billLines.size(); i++) {</span>
+<span class="nc" id="L434">                String line = billLines.get(i);</span>
+<span class="nc" id="L435">                String[] parts = line.split(&quot;,&quot;);</span>
+<span class="nc bnc" id="L436" title="All 2 branches missed.">                if (parts.length &gt;= 4) {</span>
+<span class="nc" id="L437">                    String name = parts[0];</span>
+<span class="nc" id="L438">                    String amount = parts[1];</span>
+<span class="nc" id="L439">                    String dueDate = parts[2];</span>
+<span class="nc" id="L440">                    String status = parts[3];</span>
+                    
+<span class="nc" id="L442">                    String rowStyle = &quot;&quot;;</span>
+<span class="nc bnc" id="L443" title="All 2 branches missed.">                    if (status.equalsIgnoreCase(&quot;Overdue&quot;)) {</span>
+<span class="nc" id="L444">                        rowStyle = &quot; style='background-color:#ffdddd;'&quot;;</span>
+<span class="nc" id="L445">                        overdue++;</span>
+<span class="nc bnc" id="L446" title="All 2 branches missed.">                    } else if (status.equalsIgnoreCase(&quot;Due Soon&quot;)) {</span>
+<span class="nc" id="L447">                        rowStyle = &quot; style='background-color:#ffffcc;'&quot;;</span>
+<span class="nc" id="L448">                        dueSoon++;</span>
+<span class="nc bnc" id="L449" title="All 2 branches missed.">                    } else if (status.equalsIgnoreCase(&quot;Upcoming&quot;)) {</span>
+<span class="nc" id="L450">                        upcoming++;</span>
+                    }
+                    
+<span class="nc" id="L453">                    analysisResult.append(&quot;&lt;tr&quot;).append(rowStyle).append(&quot;&gt;&quot;);</span>
+<span class="nc" id="L454">                    analysisResult.append(&quot;&lt;td&gt;&quot;).append(name).append(&quot;&lt;/td&gt;&quot;);</span>
+<span class="nc" id="L455">                    analysisResult.append(&quot;&lt;td&gt;&quot;).append(amount).append(&quot;&lt;/td&gt;&quot;);</span>
+<span class="nc" id="L456">                    analysisResult.append(&quot;&lt;td&gt;&quot;).append(dueDate).append(&quot;&lt;/td&gt;&quot;);</span>
+<span class="nc" id="L457">                    analysisResult.append(&quot;&lt;td&gt;&quot;).append(status).append(&quot;&lt;/td&gt;&quot;);</span>
+<span class="nc" id="L458">                    analysisResult.append(&quot;&lt;/tr&gt;&quot;);</span>
+                    
+<span class="nc" id="L460">                    total++;</span>
+                }
+            }
+<span class="nc" id="L463">            analysisResult.append(&quot;&lt;/table&gt;&quot;);</span>
+            
+            // Add bill summary
+<span class="nc bnc" id="L466" title="All 2 branches missed.">            if (total &gt; 0) {</span>
+<span class="nc" id="L467">                analysisResult.append(&quot;&lt;p&gt;&lt;b&gt;Bill Summary:&lt;/b&gt; Total of &quot;).append(total).append(&quot; bills, &quot;);</span>
+<span class="nc" id="L468">                analysisResult.append(&quot;&lt;span style='color:red;'&gt;&quot;).append(overdue).append(&quot; overdue&lt;/span&gt;, &quot;);</span>
+<span class="nc" id="L469">                analysisResult.append(&quot;&lt;span style='color:orange;'&gt;&quot;).append(dueSoon).append(&quot; due soon&lt;/span&gt;, &quot;);</span>
+<span class="nc" id="L470">                analysisResult.append(&quot;&lt;span style='color:green;'&gt;&quot;).append(upcoming).append(&quot; upcoming&lt;/span&gt;&lt;/p&gt;&quot;);</span>
+            }
+        }
+        
+        // Read budget data
+<span class="nc" id="L475">        List&lt;String&gt; budgetLines = readDataFile(&quot;budget.csv&quot;);</span>
+<span class="nc bnc" id="L476" title="All 2 branches missed.">        if (!budgetLines.isEmpty()) {</span>
+<span class="nc" id="L477">            analysisResult.append(&quot;&lt;h3&gt;Budget Information&lt;/h3&gt;&quot;);</span>
+<span class="nc" id="L478">            analysisResult.append(&quot;&lt;table border='1' style='width:100%; border-collapse:collapse;'&gt;&quot;);</span>
+<span class="nc" id="L479">            analysisResult.append(&quot;&lt;tr style='background-color:#f2f2f2;'&gt;&lt;th&gt;Total Budget&lt;/th&gt;&lt;th&gt;Start Date&lt;/th&gt;&lt;th&gt;End Date&lt;/th&gt;&lt;th&gt;Remaining Budget&lt;/th&gt;&lt;/tr&gt;&quot;);</span>
+            
+<span class="nc" id="L481">            String totalBudget = &quot;&quot;;</span>
+<span class="nc" id="L482">            String startDate = &quot;&quot;;</span>
+<span class="nc" id="L483">            String endDate = &quot;&quot;;</span>
+<span class="nc" id="L484">            String remainingBudget = &quot;&quot;;</span>
+            
+            // Parse budget data
+<span class="nc bnc" id="L487" title="All 2 branches missed.">            for (String line : budgetLines) {</span>
+<span class="nc" id="L488">                String[] parts = line.split(&quot;,&quot;);</span>
+<span class="nc bnc" id="L489" title="All 2 branches missed.">                if (parts.length &gt;= 2) {</span>
+<span class="nc bnc" id="L490" title="All 2 branches missed.">                    if (parts[0].equals(&quot;totalBudget&quot;)) {</span>
+<span class="nc" id="L491">                        totalBudget = parts[1];</span>
+<span class="nc bnc" id="L492" title="All 2 branches missed.">                    } else if (parts[0].equals(&quot;startDate&quot;)) {</span>
+<span class="nc" id="L493">                        startDate = parts[1];</span>
+<span class="nc bnc" id="L494" title="All 2 branches missed.">                    } else if (parts[0].equals(&quot;endDate&quot;)) {</span>
+<span class="nc" id="L495">                        endDate = parts[1];</span>
+<span class="nc bnc" id="L496" title="All 2 branches missed.">                    } else if (parts[0].equals(&quot;remainingBudget&quot;)) {</span>
+<span class="nc" id="L497">                        remainingBudget = parts[1];</span>
+                    }
+                }
+<span class="nc" id="L500">            }</span>
+            
+<span class="nc" id="L502">            analysisResult.append(&quot;&lt;tr&gt;&quot;);</span>
+<span class="nc" id="L503">            analysisResult.append(&quot;&lt;td&gt;&quot;).append(totalBudget).append(&quot;&lt;/td&gt;&quot;);</span>
+<span class="nc" id="L504">            analysisResult.append(&quot;&lt;td&gt;&quot;).append(startDate).append(&quot;&lt;/td&gt;&quot;);</span>
+<span class="nc" id="L505">            analysisResult.append(&quot;&lt;td&gt;&quot;).append(endDate).append(&quot;&lt;/td&gt;&quot;);</span>
+            
+            // Set color based on remaining budget percentage
+<span class="nc" id="L508">            String remainingStyle = &quot;&quot;;</span>
+            try {
+<span class="nc" id="L510">                double total = Double.parseDouble(totalBudget);</span>
+<span class="nc" id="L511">                double remaining = Double.parseDouble(remainingBudget);</span>
+<span class="nc" id="L512">                double percentage = (remaining / total) * 100;</span>
+                
+<span class="nc bnc" id="L514" title="All 2 branches missed.">                if (percentage &lt; 20) {</span>
+<span class="nc" id="L515">                    remainingStyle = &quot; style='color:red;font-weight:bold;'&quot;;</span>
+<span class="nc bnc" id="L516" title="All 2 branches missed.">                } else if (percentage &lt; 50) {</span>
+<span class="nc" id="L517">                    remainingStyle = &quot; style='color:orange;font-weight:bold;'&quot;;</span>
+                } else {
+<span class="nc" id="L519">                    remainingStyle = &quot; style='color:green;font-weight:bold;'&quot;;</span>
+                }
+<span class="nc" id="L521">            } catch (NumberFormatException e) {</span>
+                // If parsing fails, don't set special style
+<span class="nc" id="L523">            }</span>
+            
+<span class="nc" id="L525">            analysisResult.append(&quot;&lt;td&quot;).append(remainingStyle).append(&quot;&gt;&quot;).append(remainingBudget).append(&quot;&lt;/td&gt;&quot;);</span>
+<span class="nc" id="L526">            analysisResult.append(&quot;&lt;/tr&gt;&quot;);</span>
+<span class="nc" id="L527">            analysisResult.append(&quot;&lt;/table&gt;&quot;);</span>
+        }
+        
+<span class="nc" id="L530">        return analysisResult.toString();</span>
+    }
+    
+    /**
+     * Append text to the result pane
+     */
+    private void appendToResultPane(String htmlContent) {
+        // Get current content
+<span class="nc" id="L538">        String currentContent = resultPane.getText();</span>
+        
+        // Extract content from HTML tags
+<span class="nc" id="L541">        String bodyContent = currentContent.substring(</span>
+<span class="nc" id="L542">            currentContent.indexOf(&quot;&lt;body&gt;&quot;) + 6, </span>
+<span class="nc" id="L543">            currentContent.indexOf(&quot;&lt;/body&gt;&quot;)</span>
+        );
+        
+        // Append new content
+<span class="nc" id="L547">        String newContent = &quot;&lt;html&gt;&lt;body&gt;&quot; + bodyContent + htmlContent + &quot;&lt;/body&gt;&lt;/html&gt;&quot;;</span>
+<span class="nc" id="L548">        resultPane.setText(newContent);</span>
+        
+        // Scroll to bottom
+<span class="nc" id="L551">        resultPane.setCaretPosition(resultPane.getDocument().getLength());</span>
+<span class="nc" id="L552">    }</span>
+    
+    private void handleAnalyzeButtonClick(ActionEvent e) {
+<span class="nc bnc" id="L555" title="All 2 branches missed.">        if (transactionService.getAllTransactions().isEmpty()) {</span>
+<span class="nc" id="L556">            JOptionPane.showMessageDialog(this, </span>
+                &quot;No transaction data to analyze. Please import or add transactions first.&quot;, 
+                &quot;No Data&quot;, 
+                JOptionPane.WARNING_MESSAGE);
+<span class="nc" id="L560">            return;</span>
+        }
+        
+        // Update UI status
+<span class="nc" id="L564">        analyzeButton.setEnabled(false);</span>
+<span class="nc" id="L565">        statusLabel.setText(&quot;Analyzing...&quot;);</span>
+<span class="nc" id="L566">        statusLabel.setForeground(new Color(0, 102, 204));</span>
+<span class="nc" id="L567">        resultPane.setText(&quot;&lt;html&gt;&lt;body&gt;&lt;h2&gt;Processing your transaction data, please wait...&lt;/h2&gt;&lt;/body&gt;&lt;/html&gt;&quot;);</span>
+        
+        // Get selected analysis type
+<span class="nc" id="L570">        int selectedIndex = analysisTypeComboBox.getSelectedIndex();</span>
+<span class="nc" id="L571">        List&lt;Transaction&gt; transactions = transactionService.getAllTransactions();</span>
+        
+        // Execute analysis in background thread
+<span class="nc" id="L574">        CompletableFuture.supplyAsync(() -&gt; {</span>
+            try {
+<span class="nc bnc" id="L576" title="All 2 branches missed.">                if (selectedIndex == 0) {</span>
+                    // Smart financial analysis
+<span class="nc" id="L578">                    String insights = aiService.generateFinancialInsights(transactions);</span>
+<span class="nc" id="L579">                    return formatAIResponse(insights);</span>
+<span class="nc bnc" id="L580" title="All 2 branches missed.">                } else if (selectedIndex == 1) {</span>
+                    // Spending pattern analysis
+<span class="nc" id="L582">                    return formatAnalysisResults(aiService.analyzeSpendingPattern(transactions));</span>
+<span class="nc bnc" id="L583" title="All 2 branches missed.">                } else if (selectedIndex == 2) {</span>
+                    // Financial Health Score
+<span class="nc" id="L585">                    String report = aiService.generateFinancialHealthReport(transactions);</span>
+<span class="nc" id="L586">                    return formatFinancialHealthReport(report, aiService.calculateFinancialHealthScore(transactions));</span>
+<span class="nc bnc" id="L587" title="All 2 branches missed.">                } else if (selectedIndex == 3) {</span>
+                    // Auto-categorization examples
+<span class="nc" id="L589">                    return generateCategorizationExamples();</span>
+<span class="nc bnc" id="L590" title="All 2 branches missed.">                } else if (selectedIndex == 4) {</span>
+                    // Income-Expense Report
+<span class="nc" id="L592">                    ReportGenerator reportGenerator = new ReportGenerator(aiService);</span>
+<span class="nc" id="L593">                    return reportGenerator.generateReport(&quot;income-expense&quot;, transactions);</span>
+<span class="nc bnc" id="L594" title="All 2 branches missed.">                } else if (selectedIndex == 5) {</span>
+                    // Cash Flow Forecast
+<span class="nc" id="L596">                    ReportGenerator reportGenerator = new ReportGenerator(aiService);</span>
+<span class="nc" id="L597">                    return reportGenerator.generateReport(&quot;cash-flow&quot;, transactions);</span>
+<span class="nc bnc" id="L598" title="All 2 branches missed.">                } else if (selectedIndex == 6) {</span>
+                    // Smart Savings Recommendations
+<span class="nc" id="L600">                    ReportGenerator reportGenerator = new ReportGenerator(aiService);</span>
+<span class="nc" id="L601">                    return reportGenerator.generateReport(&quot;savings&quot;, transactions);</span>
+                } else {
+<span class="nc" id="L603">                    return &quot;&lt;html&gt;&lt;body&gt;&lt;h1&gt;Error&lt;/h1&gt;&lt;p&gt;Invalid analysis type selected.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;&quot;;</span>
+                }
+<span class="nc" id="L605">            } catch (Exception ex) {</span>
+<span class="nc" id="L606">                logger.error(&quot;Analysis error: {}&quot;, ex.getMessage(), ex);</span>
+<span class="nc" id="L607">                return &quot;&lt;html&gt;&lt;body&gt;&lt;h1&gt;Error&lt;/h1&gt;&lt;p class='highlight'&gt;Error during analysis: &quot; </span>
+<span class="nc" id="L608">                    + ex.getMessage() + &quot;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;&quot;;</span>
+            }
+<span class="nc" id="L610">        }).thenAccept(result -&gt; {</span>
+            // Update UI in EDT
+<span class="nc" id="L612">            SwingUtilities.invokeLater(() -&gt; {</span>
+<span class="nc" id="L613">                resultPane.setText(result);</span>
+<span class="nc" id="L614">                resultPane.setCaretPosition(0); // Scroll to top</span>
+<span class="nc" id="L615">                analyzeButton.setEnabled(true);</span>
+<span class="nc" id="L616">                statusLabel.setText(&quot;Analysis complete&quot;);</span>
+<span class="nc" id="L617">                statusLabel.setForeground(new Color(0, 153, 0));</span>
+<span class="nc" id="L618">            });</span>
+<span class="nc" id="L619">        });</span>
+<span class="nc" id="L620">    }</span>
+    
+    /**
+     * Format the AI response from DeepSeek into HTML
+     */
+    private String formatAIResponse(String aiResponse) {
+<span class="nc bnc" id="L626" title="All 4 branches missed.">        if (aiResponse == null || aiResponse.isEmpty()) {</span>
+<span class="nc" id="L627">            return &quot;&lt;html&gt;&lt;body&gt;&lt;p&gt;No insights available&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;&quot;;</span>
+        }
+        
+        // Replace line breaks with HTML breaks
+<span class="nc" id="L631">        String htmlText = aiResponse.replace(&quot;\n\n&quot;, &quot;&lt;/p&gt;&lt;p&gt;&quot;)</span>
+<span class="nc" id="L632">                                  .replace(&quot;\n&quot;, &quot;&lt;br/&gt;&quot;)</span>
+<span class="nc" id="L633">                                  .replace(&quot;**&quot;, &quot;&quot;); // Remove markdown bold markers</span>
+        
+        // Add headers for better formatting (heuristic detection)
+<span class="nc bnc" id="L636" title="All 4 branches missed.">        if (!htmlText.contains(&quot;&lt;h1&gt;&quot;) &amp;&amp; !htmlText.contains(&quot;&lt;h2&gt;&quot;)) {</span>
+            // Simple heuristic to identify potential headers
+<span class="nc" id="L638">            htmlText = htmlText.replaceAll(&quot;(?m)^([A-Z][A-Za-z0-9 ]+:)&lt;br/&gt;&quot;, &quot;&lt;h2&gt;$1&lt;/h2&gt;&quot;);</span>
+<span class="nc" id="L639">            htmlText = htmlText.replaceAll(&quot;(?m)&lt;p&gt;([A-Z][A-Za-z0-9 ]+:)&lt;/p&gt;&quot;, &quot;&lt;h2&gt;$1&lt;/h2&gt;&lt;p&gt;&quot;);</span>
+        }
+        
+        // Format bullet points (if they exist)
+<span class="nc" id="L643">        htmlText = htmlText.replace(&quot;• &quot;, &quot;&amp;#8226; &quot;);</span>
+<span class="nc" id="L644">        htmlText = htmlText.replace(&quot;- &quot;, &quot;&amp;#8226; &quot;);</span>
+        
+        // Complete HTML structure
+<span class="nc" id="L647">        return &quot;&lt;html&gt;&lt;body&gt;&lt;h1&gt;Financial Insights&lt;/h1&gt;&quot; + </span>
+               &quot;&lt;p&gt;&quot; + htmlText + &quot;&lt;/p&gt;&quot; +
+               &quot;&lt;/body&gt;&lt;/html&gt;&quot;;
+    }
+    
+    /**
+     * Format analysis results as HTML for better readability
+     */
+    private String formatAnalysisResults(java.util.Map&lt;String, Object&gt; analysis) {
+<span class="nc" id="L656">        StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L657">        sb.append(&quot;&lt;html&gt;&lt;body&gt;&quot;);</span>
+<span class="nc" id="L658">        sb.append(&quot;&lt;h1&gt;SPENDING PATTERN ANALYSIS&lt;/h1&gt;&quot;);</span>
+        
+        // Total spent
+<span class="nc" id="L661">        sb.append(&quot;&lt;p&gt;&lt;b&gt;Total Spent:&lt;/b&gt; &lt;span class='expense'&gt;$&quot;).append(analysis.get(&quot;totalSpent&quot;)).append(&quot;&lt;/span&gt;&lt;/p&gt;&quot;);</span>
+        
+        // Daily average
+<span class="nc" id="L664">        sb.append(&quot;&lt;p&gt;&lt;b&gt;Daily Average:&lt;/b&gt; &lt;span&gt;$&quot;).append(analysis.get(&quot;dailyAverage&quot;)).append(&quot;&lt;/span&gt;&lt;/p&gt;&quot;);</span>
+        
+        // Top category
+<span class="nc" id="L667">        sb.append(&quot;&lt;p&gt;&lt;b&gt;Top Spending Category:&lt;/b&gt; &lt;span class='highlight'&gt;&quot;).append(analysis.get(&quot;topCategory&quot;)).append(&quot;&lt;/span&gt;&lt;/p&gt;&quot;);</span>
+        
+        // Category spending - Create a table
+<span class="nc" id="L670">        sb.append(&quot;&lt;h2&gt;SPENDING BY CATEGORY&lt;/h2&gt;&quot;);</span>
+<span class="nc" id="L671">        sb.append(&quot;&lt;table&gt;&quot;);</span>
+<span class="nc" id="L672">        sb.append(&quot;&lt;tr&gt;&lt;th&gt;Category&lt;/th&gt;&lt;th&gt;Amount&lt;/th&gt;&lt;/tr&gt;&quot;);</span>
+        
+        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="nc" id="L675">        java.util.Map&lt;String, java.math.BigDecimal&gt; categoryTotals = </span>
+<span class="nc" id="L676">            (java.util.Map&lt;String, java.math.BigDecimal&gt;) analysis.get(&quot;categoryTotals&quot;);</span>
+        
+<span class="nc bnc" id="L678" title="All 2 branches missed.">        if (categoryTotals != null) {</span>
+<span class="nc" id="L679">            categoryTotals.entrySet().stream()</span>
+<span class="nc" id="L680">                .sorted((e1, e2) -&gt; e2.getValue().compareTo(e1.getValue()))</span>
+<span class="nc" id="L681">                .forEach(entry -&gt; </span>
+<span class="nc" id="L682">                    sb.append(&quot;&lt;tr&gt;&lt;td&gt;&quot;).append(entry.getKey()).append(&quot;&lt;/td&gt;&lt;td&gt;$&quot;)</span>
+<span class="nc" id="L683">                      .append(entry.getValue()).append(&quot;&lt;/td&gt;&lt;/tr&gt;&quot;)</span>
+                );
+        }
+<span class="nc" id="L686">        sb.append(&quot;&lt;/table&gt;&quot;);</span>
+        
+        // Statistics
+<span class="nc" id="L689">        sb.append(&quot;&lt;h2&gt;STATISTICS&lt;/h2&gt;&quot;);</span>
+<span class="nc" id="L690">        sb.append(&quot;&lt;table&gt;&quot;);</span>
+<span class="nc" id="L691">        sb.append(&quot;&lt;tr&gt;&lt;td&gt;Mean:&lt;/td&gt;&lt;td&gt;$&quot;).append(String.format(&quot;%.2f&quot;, analysis.get(&quot;mean&quot;))).append(&quot;&lt;/td&gt;&lt;/tr&gt;&quot;);</span>
+<span class="nc" id="L692">        sb.append(&quot;&lt;tr&gt;&lt;td&gt;Median:&lt;/td&gt;&lt;td&gt;$&quot;).append(String.format(&quot;%.2f&quot;, analysis.get(&quot;median&quot;))).append(&quot;&lt;/td&gt;&lt;/tr&gt;&quot;);</span>
+<span class="nc" id="L693">        sb.append(&quot;&lt;tr&gt;&lt;td&gt;Standard Deviation:&lt;/td&gt;&lt;td&gt;$&quot;).append(String.format(&quot;%.2f&quot;, analysis.get(&quot;standardDeviation&quot;))).append(&quot;&lt;/td&gt;&lt;/tr&gt;&quot;);</span>
+<span class="nc" id="L694">        sb.append(&quot;&lt;/table&gt;&quot;);</span>
+        
+<span class="nc" id="L696">        sb.append(&quot;&lt;/body&gt;&lt;/html&gt;&quot;);</span>
+<span class="nc" id="L697">        return sb.toString();</span>
+    }
+    
+    /**
+     * Generate categorization examples with HTML formatting
+     */
+    private String generateCategorizationExamples() {
+<span class="nc" id="L704">        StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L705">        sb.append(&quot;&lt;html&gt;&lt;body&gt;&quot;);</span>
+<span class="nc" id="L706">        sb.append(&quot;&lt;h1&gt;AUTO-CATEGORIZATION EXAMPLES&lt;/h1&gt;&quot;);</span>
+<span class="nc" id="L707">        sb.append(&quot;&lt;p&gt;Here are examples of transaction descriptions and their automated categorization:&lt;/p&gt;&quot;);</span>
+        
+<span class="nc" id="L709">        sb.append(&quot;&lt;table&gt;&quot;);</span>
+<span class="nc" id="L710">        sb.append(&quot;&lt;tr&gt;&lt;th&gt;Description&lt;/th&gt;&lt;th&gt;Category&lt;/th&gt;&lt;/tr&gt;&quot;);</span>
+        
+<span class="nc" id="L712">        String[][] examples = {</span>
+<span class="nc" id="L713">            {&quot;Lunch at McDonald's&quot;, aiService.categorizeTransaction(&quot;Lunch at McDonald's&quot;)},</span>
+<span class="nc" id="L714">            {&quot;Movie theater tickets&quot;, aiService.categorizeTransaction(&quot;Movie theater tickets&quot;)},</span>
+<span class="nc" id="L715">            {&quot;Subway pass recharge&quot;, aiService.categorizeTransaction(&quot;Subway pass recharge&quot;)},</span>
+<span class="nc" id="L716">            {&quot;Online shopping - electronics&quot;, aiService.categorizeTransaction(&quot;Online shopping - electronics&quot;)},</span>
+<span class="nc" id="L717">            {&quot;Mobile phone bill payment&quot;, aiService.categorizeTransaction(&quot;Mobile phone bill payment&quot;)},</span>
+<span class="nc" id="L718">            {&quot;Monthly rent payment&quot;, aiService.categorizeTransaction(&quot;Monthly rent payment&quot;)},</span>
+<span class="nc" id="L719">            {&quot;University tuition fee&quot;, aiService.categorizeTransaction(&quot;University tuition fee&quot;)},</span>
+<span class="nc" id="L720">            {&quot;Pharmacy purchase&quot;, aiService.categorizeTransaction(&quot;Pharmacy purchase&quot;)},</span>
+<span class="nc" id="L721">            {&quot;Utility bills&quot;, aiService.categorizeTransaction(&quot;Utility bills&quot;)},</span>
+<span class="nc" id="L722">            {&quot;Gym membership fee&quot;, aiService.categorizeTransaction(&quot;Gym membership fee&quot;)}</span>
+        };
+        
+<span class="nc bnc" id="L725" title="All 2 branches missed.">        for (String[] example : examples) {</span>
+<span class="nc" id="L726">            sb.append(&quot;&lt;tr&gt;&lt;td&gt;\&quot;&quot;).append(example[0]).append(&quot;\&quot;&lt;/td&gt;&quot;);</span>
+<span class="nc" id="L727">            sb.append(&quot;&lt;td&gt;&quot;).append(example[1]).append(&quot;&lt;/td&gt;&lt;/tr&gt;&quot;);</span>
+        }
+        
+<span class="nc" id="L730">        sb.append(&quot;&lt;/table&gt;&quot;);</span>
+<span class="nc" id="L731">        sb.append(&quot;&lt;p class='highlight'&gt;You can use the DeepSeek API for more accurate transaction categorization.&lt;/p&gt;&quot;);</span>
+<span class="nc" id="L732">        sb.append(&quot;&lt;/body&gt;&lt;/html&gt;&quot;);</span>
+        
+<span class="nc" id="L734">        return sb.toString();</span>
+    }
+    
+    /**
+     * Format financial health report with score visualization and recommendations
+     * @param aiReport AI-generated report text
+     * @param scoreData Map with score data
+     * @return HTML formatted report
+     */
+    private String formatFinancialHealthReport(String aiReport, Map&lt;String, Object&gt; scoreData) {
+<span class="nc" id="L744">        StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L745">        sb.append(&quot;&lt;html&gt;&lt;body&gt;&quot;);</span>
+        
+        // Add title
+<span class="nc" id="L748">        sb.append(&quot;&lt;h1&gt;Financial Health Score Analysis&lt;/h1&gt;&quot;);</span>
+        
+        // Get score values
+<span class="nc" id="L751">        int score = (int) scoreData.get(&quot;score&quot;);</span>
+<span class="nc" id="L752">        String category = (String) scoreData.get(&quot;category&quot;);</span>
+<span class="nc" id="L753">        BigDecimal savingsRate = (BigDecimal) scoreData.get(&quot;savingsRate&quot;);</span>
+<span class="nc" id="L754">        BigDecimal expenseRatio = (BigDecimal) scoreData.get(&quot;expenseToIncomeRatio&quot;);</span>
+<span class="nc" id="L755">        BigDecimal totalIncome = (BigDecimal) scoreData.get(&quot;totalIncome&quot;);</span>
+<span class="nc" id="L756">        BigDecimal totalExpenses = (BigDecimal) scoreData.get(&quot;totalExpenses&quot;);</span>
+<span class="nc" id="L757">        BigDecimal netSavings = (BigDecimal) scoreData.get(&quot;netSavings&quot;);</span>
+        
+        // Create score visualization
+<span class="nc" id="L760">        sb.append(&quot;&lt;div style='background-color:#f5f5f5; padding:15px; border-radius:8px; margin:15px 0;'&gt;&quot;);</span>
+<span class="nc" id="L761">        sb.append(&quot;&lt;h2 style='text-align:center; margin-top:0;'&gt;Your Financial Health Score&lt;/h2&gt;&quot;);</span>
+        
+        // Score visualization - circular gauge
+<span class="nc" id="L764">        String scoreColor = getScoreColor(score);</span>
+<span class="nc" id="L765">        sb.append(&quot;&lt;div style='text-align:center;'&gt;&quot;);</span>
+<span class="nc" id="L766">        sb.append(&quot;&lt;div style='display:inline-block; width:150px; height:150px; border-radius:50%; &quot;);</span>
+<span class="nc" id="L767">        sb.append(&quot;background: conic-gradient(&quot;).append(scoreColor).append(&quot; 0% &quot;).append(score).append(&quot;%, #e0e0e0 &quot;).append(score).append(&quot;% 100%);&quot;);</span>
+<span class="nc" id="L768">        sb.append(&quot;position:relative;'&gt;&quot;);</span>
+<span class="nc" id="L769">        sb.append(&quot;&lt;div style='position:absolute; top:15px; left:15px; width:120px; height:120px; &quot;);</span>
+<span class="nc" id="L770">        sb.append(&quot;border-radius:50%; background-color:white; display:flex; flex-direction:column; &quot;);</span>
+<span class="nc" id="L771">        sb.append(&quot;justify-content:center; align-items:center;'&gt;&quot;);</span>
+<span class="nc" id="L772">        sb.append(&quot;&lt;span style='font-size:32px; font-weight:bold; color:&quot;).append(scoreColor).append(&quot;;'&gt;&quot;).append(score).append(&quot;&lt;/span&gt;&quot;);</span>
+<span class="nc" id="L773">        sb.append(&quot;&lt;span style='font-size:16px;'&gt;&quot;).append(category).append(&quot;&lt;/span&gt;&quot;);</span>
+<span class="nc" id="L774">        sb.append(&quot;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&quot;);</span>
+        
+        // Key metrics
+<span class="nc" id="L777">        sb.append(&quot;&lt;div style='display:flex; justify-content:space-around; margin-top:20px;'&gt;&quot;);</span>
+        
+        // Savings Rate
+<span class="nc" id="L780">        String savingsColor = getSavingsRateColor(savingsRate.doubleValue());</span>
+<span class="nc" id="L781">        sb.append(&quot;&lt;div style='text-align:center;'&gt;&quot;);</span>
+<span class="nc" id="L782">        sb.append(&quot;&lt;div style='font-size:14px;'&gt;Savings Rate&lt;/div&gt;&quot;);</span>
+<span class="nc" id="L783">        sb.append(&quot;&lt;div style='font-size:20px; font-weight:bold; color:&quot;).append(savingsColor).append(&quot;;'&gt;&quot;);</span>
+<span class="nc" id="L784">        sb.append(savingsRate.setScale(1, BigDecimal.ROUND_HALF_UP)).append(&quot;%&lt;/div&gt;&quot;);</span>
+<span class="nc" id="L785">        sb.append(&quot;&lt;/div&gt;&quot;);</span>
+        
+        // Expense Ratio
+<span class="nc" id="L788">        String expenseColor = getExpenseRatioColor(expenseRatio.doubleValue());</span>
+<span class="nc" id="L789">        sb.append(&quot;&lt;div style='text-align:center;'&gt;&quot;);</span>
+<span class="nc" id="L790">        sb.append(&quot;&lt;div style='font-size:14px;'&gt;Expense-to-Income&lt;/div&gt;&quot;);</span>
+<span class="nc" id="L791">        sb.append(&quot;&lt;div style='font-size:20px; font-weight:bold; color:&quot;).append(expenseColor).append(&quot;;'&gt;&quot;);</span>
+<span class="nc" id="L792">        sb.append(expenseRatio.setScale(2, BigDecimal.ROUND_HALF_UP)).append(&quot;&lt;/div&gt;&quot;);</span>
+<span class="nc" id="L793">        sb.append(&quot;&lt;/div&gt;&quot;);</span>
+        
+<span class="nc" id="L795">        sb.append(&quot;&lt;/div&gt;&quot;); // End of metrics</span>
+<span class="nc" id="L796">        sb.append(&quot;&lt;/div&gt;&quot;); // End of score visualization</span>
+        
+        // Financial summary
+<span class="nc" id="L799">        sb.append(&quot;&lt;h2&gt;Financial Summary&lt;/h2&gt;&quot;);</span>
+<span class="nc" id="L800">        sb.append(&quot;&lt;table style='width:100%; border-collapse:collapse;'&gt;&quot;);</span>
+<span class="nc" id="L801">        sb.append(&quot;&lt;tr&gt;&lt;th style='text-align:left; padding:8px; background-color:#f2f2f2;'&gt;Metric&lt;/th&gt;&quot;);</span>
+<span class="nc" id="L802">        sb.append(&quot;&lt;th style='text-align:right; padding:8px; background-color:#f2f2f2;'&gt;Amount&lt;/th&gt;&lt;/tr&gt;&quot;);</span>
+        
+<span class="nc" id="L804">        sb.append(&quot;&lt;tr&gt;&lt;td style='padding:8px; border-bottom:1px solid #ddd;'&gt;Total Income&lt;/td&gt;&quot;);</span>
+<span class="nc" id="L805">        sb.append(&quot;&lt;td style='text-align:right; padding:8px; border-bottom:1px solid #ddd; color:green;'&gt;&quot;);</span>
+<span class="nc" id="L806">        sb.append(formatCurrency(totalIncome)).append(&quot;&lt;/td&gt;&lt;/tr&gt;&quot;);</span>
+        
+<span class="nc" id="L808">        sb.append(&quot;&lt;tr&gt;&lt;td style='padding:8px; border-bottom:1px solid #ddd;'&gt;Total Expenses&lt;/td&gt;&quot;);</span>
+<span class="nc" id="L809">        sb.append(&quot;&lt;td style='text-align:right; padding:8px; border-bottom:1px solid #ddd; color:red;'&gt;&quot;);</span>
+<span class="nc" id="L810">        sb.append(formatCurrency(totalExpenses)).append(&quot;&lt;/td&gt;&lt;/tr&gt;&quot;);</span>
+        
+<span class="nc bnc" id="L812" title="All 2 branches missed.">        String netSavingsColor = netSavings.compareTo(BigDecimal.ZERO) &gt;= 0 ? &quot;green&quot; : &quot;red&quot;;</span>
+<span class="nc" id="L813">        sb.append(&quot;&lt;tr&gt;&lt;td style='padding:8px; border-bottom:1px solid #ddd; font-weight:bold;'&gt;Net Savings&lt;/td&gt;&quot;);</span>
+<span class="nc" id="L814">        sb.append(&quot;&lt;td style='text-align:right; padding:8px; border-bottom:1px solid #ddd; font-weight:bold; color:&quot; + netSavingsColor + &quot;;'&gt;&quot;);</span>
+<span class="nc" id="L815">        sb.append(formatCurrency(netSavings)).append(&quot;&lt;/td&gt;&lt;/tr&gt;&quot;);</span>
+        
+<span class="nc" id="L817">        sb.append(&quot;&lt;/table&gt;&quot;);</span>
+        
+        // Recommendations
+<span class="nc" id="L820">        sb.append(&quot;&lt;h2&gt;Recommendations&lt;/h2&gt;&quot;);</span>
+<span class="nc" id="L821">        sb.append(&quot;&lt;ul&gt;&quot;);</span>
+        
+        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="nc" id="L824">        List&lt;String&gt; recommendations = (List&lt;String&gt;) scoreData.get(&quot;recommendations&quot;);</span>
+<span class="nc bnc" id="L825" title="All 2 branches missed.">        if (recommendations != null) {</span>
+<span class="nc bnc" id="L826" title="All 2 branches missed.">            for (String recommendation : recommendations) {</span>
+<span class="nc" id="L827">                String style = &quot;&quot;;</span>
+<span class="nc bnc" id="L828" title="All 2 branches missed.">                if (recommendation.startsWith(&quot;CRITICAL&quot;)) {</span>
+<span class="nc" id="L829">                    style = &quot; style='color:red; font-weight:bold;'&quot;;</span>
+<span class="nc" id="L830">                    recommendation = recommendation.replace(&quot;CRITICAL: &quot;, &quot;&quot;);</span>
+                }
+<span class="nc" id="L832">                sb.append(&quot;&lt;li&quot;).append(style).append(&quot;&gt;&quot;).append(recommendation).append(&quot;&lt;/li&gt;&quot;);</span>
+<span class="nc" id="L833">            }</span>
+        }
+<span class="nc" id="L835">        sb.append(&quot;&lt;/ul&gt;&quot;);</span>
+        
+        // Detailed analysis from AI
+<span class="nc bnc" id="L838" title="All 4 branches missed.">        if (aiReport != null &amp;&amp; !aiReport.isEmpty()) {</span>
+<span class="nc" id="L839">            sb.append(&quot;&lt;h2&gt;Detailed Analysis&lt;/h2&gt;&quot;);</span>
+            
+            // Replace line breaks with HTML breaks
+<span class="nc" id="L842">            String htmlText = aiReport.replace(&quot;\n\n&quot;, &quot;&lt;/p&gt;&lt;p&gt;&quot;)</span>
+<span class="nc" id="L843">                                    .replace(&quot;\n&quot;, &quot;&lt;br/&gt;&quot;)</span>
+<span class="nc" id="L844">                                    .replace(&quot;**&quot;, &quot;&quot;); // Remove markdown bold markers</span>
+            
+            // Simple heuristic to identify potential headers
+<span class="nc" id="L847">            htmlText = htmlText.replaceAll(&quot;(?m)^([A-Z][A-Za-z0-9 ]+:)&lt;br/&gt;&quot;, &quot;&lt;h3&gt;$1&lt;/h3&gt;&quot;);</span>
+<span class="nc" id="L848">            htmlText = htmlText.replaceAll(&quot;(?m)&lt;p&gt;([A-Z][A-Za-z0-9 ]+:)&lt;/p&gt;&quot;, &quot;&lt;h3&gt;$1&lt;/h3&gt;&lt;p&gt;&quot;);</span>
+            
+            // Format bullet points (if they exist)
+<span class="nc" id="L851">            htmlText = htmlText.replace(&quot;• &quot;, &quot;&amp;#8226; &quot;);</span>
+<span class="nc" id="L852">            htmlText = htmlText.replace(&quot;- &quot;, &quot;&amp;#8226; &quot;);</span>
+            
+<span class="nc" id="L854">            sb.append(&quot;&lt;div class='ai-analysis'&gt;&quot;);</span>
+<span class="nc" id="L855">            sb.append(&quot;&lt;p&gt;&quot;).append(htmlText).append(&quot;&lt;/p&gt;&quot;);</span>
+<span class="nc" id="L856">            sb.append(&quot;&lt;/div&gt;&quot;);</span>
+        }
+        
+<span class="nc" id="L859">        sb.append(&quot;&lt;/body&gt;&lt;/html&gt;&quot;);</span>
+<span class="nc" id="L860">        return sb.toString();</span>
+    }
+    
+    /**
+     * Format currency value with $ sign
+     */
+    private String formatCurrency(BigDecimal amount) {
+<span class="nc" id="L867">        return &quot;$&quot; + String.format(&quot;%.2f&quot;, amount);</span>
+    }
+    
+    /**
+     * Get appropriate color for the financial health score
+     */
+    private String getScoreColor(int score) {
+<span class="nc bnc" id="L874" title="All 2 branches missed.">        if (score &gt;= 90) return &quot;#4CAF50&quot;; // Excellent - green</span>
+<span class="nc bnc" id="L875" title="All 2 branches missed.">        if (score &gt;= 75) return &quot;#8BC34A&quot;; // Good - light green</span>
+<span class="nc bnc" id="L876" title="All 2 branches missed.">        if (score &gt;= 60) return &quot;#FFC107&quot;; // Average - amber</span>
+<span class="nc bnc" id="L877" title="All 2 branches missed.">        if (score &gt;= 40) return &quot;#FF9800&quot;; // Below Average - orange</span>
+<span class="nc" id="L878">        return &quot;#F44336&quot;; // Poor - red</span>
+    }
+    
+    /**
+     * Get appropriate color for savings rate
+     */
+    private String getSavingsRateColor(double savingsRate) {
+<span class="nc bnc" id="L885" title="All 2 branches missed.">        if (savingsRate &gt;= 20) return &quot;#4CAF50&quot;; // Excellent - green</span>
+<span class="nc bnc" id="L886" title="All 2 branches missed.">        if (savingsRate &gt;= 10) return &quot;#8BC34A&quot;; // Good - light green</span>
+<span class="nc bnc" id="L887" title="All 2 branches missed.">        if (savingsRate &gt;= 5) return &quot;#FFC107&quot;; // Average - amber</span>
+<span class="nc bnc" id="L888" title="All 2 branches missed.">        if (savingsRate &gt;= 0) return &quot;#FF9800&quot;; // Below Average - orange</span>
+<span class="nc" id="L889">        return &quot;#F44336&quot;; // Poor - red</span>
+    }
+    
+    /**
+     * Get appropriate color for expense ratio
+     */
+    private String getExpenseRatioColor(double expenseRatio) {
+<span class="nc bnc" id="L896" title="All 2 branches missed.">        if (expenseRatio &lt;= 0.6) return &quot;#4CAF50&quot;; // Excellent - green</span>
+<span class="nc bnc" id="L897" title="All 2 branches missed.">        if (expenseRatio &lt;= 0.8) return &quot;#8BC34A&quot;; // Good - light green</span>
+<span class="nc bnc" id="L898" title="All 2 branches missed.">        if (expenseRatio &lt;= 0.9) return &quot;#FFC107&quot;; // Average - amber</span>
+<span class="nc bnc" id="L899" title="All 2 branches missed.">        if (expenseRatio &lt;= 1.0) return &quot;#FF9800&quot;; // Below Average - orange</span>
+<span class="nc" id="L900">        return &quot;#F44336&quot;; // Poor - red</span>
+    }
+} 
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Transaction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">finance-tracker</a> &gt; <a href="index.source.html" class="el_package">com.group78.financetracker.model</a> &gt; <span class="el_source">Transaction.java</span></div><h1>Transaction.java</h1><pre class="source lang-java linenums">package com.group78.financetracker.model;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+public class Transaction {
+    private String id;
+    private BigDecimal amount;
+    private String category;
+    private String description;
+    private LocalDateTime dateTime;
+    private TransactionType type;
+    private String paymentMethod;
+    private String currency;
+
+    public Transaction(String id, BigDecimal amount, String category, String description,
+                      LocalDateTime dateTime, TransactionType type, String paymentMethod) {
+<span class="fc" id="L18">        this(id, amount, category, description, dateTime, type, paymentMethod, &quot;CNY&quot;);</span>
+<span class="fc" id="L19">    }</span>
+
+    public Transaction(String id, BigDecimal amount, String category, String description,
+<span class="fc" id="L22">                      LocalDateTime dateTime, TransactionType type, String paymentMethod, String currency) {</span>
+<span class="fc" id="L23">        this.id = id;</span>
+<span class="fc" id="L24">        this.amount = amount;</span>
+<span class="fc" id="L25">        this.category = category;</span>
+<span class="fc" id="L26">        this.description = description;</span>
+<span class="fc" id="L27">        this.dateTime = dateTime;</span>
+<span class="fc" id="L28">        this.type = type;</span>
+<span class="fc" id="L29">        this.paymentMethod = paymentMethod;</span>
+<span class="fc" id="L30">        this.currency = currency;</span>
+<span class="fc" id="L31">    }</span>
+
+    // Getters
+<span class="nc" id="L34">    public String getId() { return id; }</span>
+<span class="fc" id="L35">    public BigDecimal getAmount() { return amount; }</span>
+<span class="fc" id="L36">    public String getCategory() { return category; }</span>
+<span class="fc" id="L37">    public String getDescription() { return description; }</span>
+<span class="fc" id="L38">    public LocalDateTime getDateTime() { return dateTime; }</span>
+<span class="fc" id="L39">    public TransactionType getType() { return type; }</span>
+<span class="fc" id="L40">    public String getPaymentMethod() { return paymentMethod; }</span>
+<span class="fc" id="L41">    public String getCurrency() { return currency; }</span>
+
+    // Setters
+<span class="nc" id="L44">    public void setId(String id) { this.id = id; }</span>
+<span class="nc" id="L45">    public void setAmount(BigDecimal amount) { this.amount = amount; }</span>
+<span class="nc" id="L46">    public void setCategory(String category) { this.category = category; }</span>
+<span class="nc" id="L47">    public void setDescription(String description) { this.description = description; }</span>
+<span class="nc" id="L48">    public void setDateTime(LocalDateTime dateTime) { this.dateTime = dateTime; }</span>
+<span class="nc" id="L49">    public void setType(TransactionType type) { this.type = type; }</span>
+<span class="nc" id="L50">    public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }</span>
+<span class="nc" id="L51">    public void setCurrency(String currency) { this.currency = currency; }</span>
+
+    @Override
+    public String toString() {
+<span class="nc" id="L55">        return String.format(&quot;Transaction{id='%s', amount=%s %s, category='%s', description='%s', &quot; +</span>
+                           &quot;dateTime=%s, type=%s, paymentMethod='%s'}&quot;, 
+                           id, amount, currency, category, description, dateTime, type, paymentMethod);
+    }
+} 
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

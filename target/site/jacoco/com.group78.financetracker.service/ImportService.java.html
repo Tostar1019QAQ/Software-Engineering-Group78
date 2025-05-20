@@ -1,0 +1,443 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ImportService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">finance-tracker</a> &gt; <a href="index.source.html" class="el_package">com.group78.financetracker.service</a> &gt; <span class="el_source">ImportService.java</span></div><h1>ImportService.java</h1><pre class="source lang-java linenums">package com.group78.financetracker.service;
+
+import com.group78.financetracker.model.Transaction;
+import com.group78.financetracker.model.TransactionType;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
+
+public class ImportService {
+<span class="fc" id="L26">    private static final Logger logger = LoggerFactory.getLogger(ImportService.class);</span>
+<span class="fc" id="L27">    private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd&quot;);</span>
+    private static final int BATCH_SIZE = 1000;
+    private static final String DEFAULT_DATA_FILE = &quot;data/default_transactions.csv&quot;;
+    private List&lt;Transaction&gt; transactions;
+    private List&lt;ImportError&gt; importErrors;
+
+    public static class ImportError {
+        private final int lineNumber;
+        private final String message;
+
+<span class="nc" id="L37">        public ImportError(int lineNumber, String message) {</span>
+<span class="nc" id="L38">            this.lineNumber = lineNumber;</span>
+<span class="nc" id="L39">            this.message = message;</span>
+<span class="nc" id="L40">        }</span>
+
+        public int getLineNumber() {
+<span class="nc" id="L43">            return lineNumber;</span>
+        }
+
+        public String getMessage() {
+<span class="nc" id="L47">            return message;</span>
+        }
+    }
+
+<span class="fc" id="L51">    public ImportService() {</span>
+<span class="fc" id="L52">        this.transactions = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L53">        this.importErrors = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L54">        loadDefaultTransactions();</span>
+<span class="fc" id="L55">    }</span>
+
+    private void loadDefaultTransactions() {
+        try {
+<span class="fc" id="L59">            logger.info(&quot;Loading default transactions from: {}&quot;, DEFAULT_DATA_FILE);</span>
+<span class="fc" id="L60">            File defaultFile = new File(DEFAULT_DATA_FILE);</span>
+<span class="pc bpc" id="L61" title="1 of 2 branches missed.">            if (defaultFile.exists()) {</span>
+<span class="fc" id="L62">                logger.info(&quot;Default transactions file exists, loading...&quot;);</span>
+                // Clear existing transactions before loading
+<span class="fc" id="L64">                transactions.clear();</span>
+                
+<span class="fc" id="L66">                List&lt;Transaction&gt; defaultTransactions = importFromFile(defaultFile);</span>
+<span class="fc" id="L67">                logger.info(&quot;Loaded {} default transactions&quot;, defaultTransactions.size());</span>
+                
+                // Print first few transactions for debugging
+<span class="fc" id="L70">                int count = 0;</span>
+<span class="fc bfc" id="L71" title="All 2 branches covered.">                for (Transaction t : transactions) {</span>
+<span class="fc bfc" id="L72" title="All 2 branches covered.">                    if (count++ &lt; 5) {</span>
+<span class="fc" id="L73">                        logger.debug(&quot;Sample transaction: {} - {} - {}&quot;, </span>
+<span class="fc" id="L74">                                   t.getDescription(), t.getAmount(), t.getDateTime().toLocalDate());</span>
+                    }
+<span class="fc" id="L76">                }</span>
+<span class="fc" id="L77">            } else {</span>
+<span class="nc" id="L78">                logger.warn(&quot;Default transactions file not found: {}&quot;, DEFAULT_DATA_FILE);</span>
+            }
+<span class="nc" id="L80">        } catch (IOException e) {</span>
+<span class="nc" id="L81">            logger.error(&quot;Failed to load default transactions: {}&quot;, e.getMessage(), e);</span>
+<span class="fc" id="L82">        }</span>
+<span class="fc" id="L83">    }</span>
+
+    public void setDateFormat(String format) {
+<span class="nc" id="L86">        this.dateFormatter = DateTimeFormatter.ofPattern(format);</span>
+<span class="nc" id="L87">    }</span>
+
+    public List&lt;ImportError&gt; getImportErrors() {
+<span class="nc" id="L90">        return new ArrayList&lt;&gt;(importErrors);</span>
+    }
+
+    public void addTransaction(Transaction transaction) {
+<span class="nc" id="L94">        transactions.add(transaction);</span>
+<span class="nc" id="L95">        saveTransactionsToFile();</span>
+<span class="nc" id="L96">    }</span>
+
+    public List&lt;Transaction&gt; getAllTransactions() {
+<span class="fc" id="L99">        return new ArrayList&lt;&gt;(transactions);</span>
+    }
+
+    public void clearTransactions() {
+<span class="nc" id="L103">        transactions.clear();</span>
+<span class="nc" id="L104">        importErrors.clear();</span>
+<span class="nc" id="L105">        loadDefaultTransactions();</span>
+<span class="nc" id="L106">    }</span>
+
+    public void reloadDefaultData() {
+<span class="nc" id="L109">        clearTransactions();</span>
+<span class="nc" id="L110">    }</span>
+
+    /**
+     * Determines the file type and imports accordingly
+     * @param file File to import
+     * @return List of imported transactions
+     * @throws IOException If an error occurs during import
+     */
+    public List&lt;Transaction&gt; importFromFile(File file) throws IOException {
+<span class="fc" id="L119">        String fileName = file.getName().toLowerCase();</span>
+<span class="pc bpc" id="L120" title="1 of 2 branches missed.">        if (fileName.endsWith(&quot;.csv&quot;)) {</span>
+<span class="fc" id="L121">            return importFromCSV(file.getAbsolutePath());</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">        } else if (fileName.endsWith(&quot;.xlsx&quot;)) {</span>
+<span class="nc" id="L123">            return importFromXLSX(file.getAbsolutePath());</span>
+        } else {
+<span class="nc" id="L125">            throw new IOException(&quot;Unsupported file format. Please use CSV or XLSX files.&quot;);</span>
+        }
+    }
+
+    /**
+     * Import transactions from XLSX file
+     * @param filePath Path to the XLSX file
+     * @return List of imported transactions
+     * @throws IOException If an error occurs during import
+     */
+    public List&lt;Transaction&gt; importFromXLSX(String filePath) throws IOException {
+<span class="nc" id="L136">        List&lt;Transaction&gt; importedTransactions = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L137">        importErrors.clear();</span>
+        
+<span class="nc" id="L139">        try (FileInputStream fis = new FileInputStream(filePath);</span>
+<span class="nc" id="L140">             Workbook workbook = new XSSFWorkbook(fis)) {</span>
+            
+<span class="nc" id="L142">            Sheet sheet = workbook.getSheetAt(0);</span>
+            
+            // Get header row to determine columns
+<span class="nc" id="L145">            Row headerRow = sheet.getRow(0);</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">            if (headerRow == null) {</span>
+<span class="nc" id="L147">                throw new IOException(&quot;Excel file does not contain a header row&quot;);</span>
+            }
+            
+            // Map column indices
+<span class="nc" id="L151">            int dateColIdx = -1;</span>
+<span class="nc" id="L152">            int descColIdx = -1;</span>
+<span class="nc" id="L153">            int amountColIdx = -1;</span>
+<span class="nc" id="L154">            int categoryColIdx = -1;</span>
+<span class="nc" id="L155">            int paymentMethodColIdx = -1;</span>
+<span class="nc" id="L156">            int currencyColIdx = -1;</span>
+            
+<span class="nc bnc" id="L158" title="All 2 branches missed.">            for (int i = 0; i &lt; headerRow.getLastCellNum(); i++) {</span>
+<span class="nc" id="L159">                Cell cell = headerRow.getCell(i);</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">                if (cell == null) continue;</span>
+                
+<span class="nc" id="L162">                String headerName = cell.getStringCellValue().trim().toLowerCase();</span>
+<span class="nc bnc" id="L163" title="All 7 branches missed.">                switch (headerName) {</span>
+<span class="nc" id="L164">                    case &quot;date&quot;: dateColIdx = i; break;</span>
+<span class="nc" id="L165">                    case &quot;description&quot;: descColIdx = i; break;</span>
+<span class="nc" id="L166">                    case &quot;amount&quot;: amountColIdx = i; break;</span>
+<span class="nc" id="L167">                    case &quot;category&quot;: categoryColIdx = i; break;</span>
+<span class="nc" id="L168">                    case &quot;payment method&quot;: paymentMethodColIdx = i; break;</span>
+<span class="nc" id="L169">                    case &quot;currency&quot;: currencyColIdx = i; break;</span>
+                }
+            }
+            
+            // Validate required columns exist
+<span class="nc bnc" id="L174" title="All 10 branches missed.">            if (dateColIdx == -1 || descColIdx == -1 || amountColIdx == -1 || </span>
+                categoryColIdx == -1 || paymentMethodColIdx == -1) {
+<span class="nc" id="L176">                throw new IOException(&quot;Excel file missing required columns. Required columns: Date, Description, Amount, Category, Payment Method&quot;);</span>
+            }
+            
+            // Process data rows
+<span class="nc" id="L180">            List&lt;Transaction&gt; batch = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L181">            int rowNum = 1; // Start from second row (after header)</span>
+            
+<span class="nc bnc" id="L183" title="All 2 branches missed.">            for (Row row : sheet) {</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">                if (row.getRowNum() == 0) continue; // Skip header</span>
+                
+                try {
+                    // Extract cell values (handle nulls)
+<span class="nc" id="L188">                    String date = getCellValueAsString(row.getCell(dateColIdx));</span>
+<span class="nc" id="L189">                    String description = getCellValueAsString(row.getCell(descColIdx));</span>
+<span class="nc" id="L190">                    String amount = getCellValueAsString(row.getCell(amountColIdx));</span>
+<span class="nc" id="L191">                    String category = getCellValueAsString(row.getCell(categoryColIdx));</span>
+<span class="nc" id="L192">                    String paymentMethod = getCellValueAsString(row.getCell(paymentMethodColIdx));</span>
+<span class="nc bnc" id="L193" title="All 2 branches missed.">                    String currency = currencyColIdx != -1 ? </span>
+<span class="nc" id="L194">                        getCellValueAsString(row.getCell(currencyColIdx)) : &quot;CNY&quot;;</span>
+                    
+                    // Validate values
+<span class="nc bnc" id="L197" title="All 6 branches missed.">                    if (date.isEmpty() || description.isEmpty() || amount.isEmpty() || </span>
+<span class="nc bnc" id="L198" title="All 4 branches missed.">                        category.isEmpty() || paymentMethod.isEmpty()) {</span>
+<span class="nc" id="L199">                        throw new IllegalArgumentException(&quot;Required fields cannot be empty&quot;);</span>
+                    }
+                    
+                    // Parse date
+                    LocalDateTime dateTime;
+                    try {
+<span class="nc" id="L205">                        LocalDate localDate = LocalDate.parse(date, dateFormatter);</span>
+<span class="nc" id="L206">                        dateTime = localDate.atStartOfDay();</span>
+<span class="nc" id="L207">                    } catch (DateTimeParseException e) {</span>
+<span class="nc" id="L208">                        throw new IllegalArgumentException(&quot;Invalid date format, should be: &quot; + dateFormatter.toString());</span>
+<span class="nc" id="L209">                    }</span>
+                    
+                    // Parse amount and determine transaction type
+                    BigDecimal amountValue;
+                    try {
+<span class="nc" id="L214">                        amountValue = new BigDecimal(amount.replace(&quot;,&quot;, &quot;&quot;));</span>
+<span class="nc" id="L215">                    } catch (NumberFormatException e) {</span>
+<span class="nc" id="L216">                        throw new IllegalArgumentException(&quot;Invalid amount format&quot;);</span>
+<span class="nc" id="L217">                    }</span>
+                    
+<span class="nc bnc" id="L219" title="All 2 branches missed.">                    TransactionType type = amountValue.compareTo(BigDecimal.ZERO) &lt; 0 ?</span>
+<span class="nc" id="L220">                        TransactionType.EXPENSE : TransactionType.INCOME;</span>
+                    
+                    // Create transaction
+<span class="nc" id="L223">                    Transaction transaction = new Transaction(</span>
+<span class="nc" id="L224">                        UUID.randomUUID().toString(),</span>
+<span class="nc" id="L225">                        amountValue.abs(),</span>
+<span class="nc" id="L226">                        category.trim(),</span>
+<span class="nc" id="L227">                        description.trim(),</span>
+                        dateTime,
+                        type,
+<span class="nc" id="L230">                        paymentMethod.trim(),</span>
+<span class="nc" id="L231">                        currency.trim()</span>
+                    );
+                    
+<span class="nc" id="L234">                    batch.add(transaction);</span>
+                    
+<span class="nc bnc" id="L236" title="All 2 branches missed.">                    if (batch.size() &gt;= BATCH_SIZE) {</span>
+<span class="nc" id="L237">                        importedTransactions.addAll(batch);</span>
+<span class="nc" id="L238">                        transactions.addAll(batch);</span>
+<span class="nc" id="L239">                        batch.clear();</span>
+                    }
+<span class="nc" id="L241">                } catch (Exception e) {</span>
+<span class="nc" id="L242">                    String errorMessage = String.format(&quot;Row %d: %s&quot;, rowNum, e.getMessage());</span>
+<span class="nc" id="L243">                    importErrors.add(new ImportError(rowNum, errorMessage));</span>
+<span class="nc" id="L244">                    logger.error(errorMessage, e);</span>
+<span class="nc" id="L245">                }</span>
+                
+<span class="nc" id="L247">                rowNum++;</span>
+<span class="nc" id="L248">            }</span>
+            
+            // Process the last batch
+<span class="nc bnc" id="L251" title="All 2 branches missed.">            if (!batch.isEmpty()) {</span>
+<span class="nc" id="L252">                importedTransactions.addAll(batch);</span>
+<span class="nc" id="L253">                transactions.addAll(batch);</span>
+            }
+            
+            // Save the combined data
+<span class="nc" id="L257">            saveTransactionsToFile();</span>
+        }
+        
+<span class="nc" id="L260">        return importedTransactions;</span>
+    }
+    
+    /**
+     * Helper method to extract cell value as string, handling different cell types
+     */
+    private String getCellValueAsString(Cell cell) {
+<span class="nc bnc" id="L267" title="All 2 branches missed.">        if (cell == null) return &quot;&quot;;</span>
+        
+<span class="nc bnc" id="L269" title="All 5 branches missed.">        switch (cell.getCellType()) {</span>
+            case STRING:
+<span class="nc" id="L271">                return cell.getStringCellValue();</span>
+            case NUMERIC:
+<span class="nc bnc" id="L273" title="All 2 branches missed.">                if (DateUtil.isCellDateFormatted(cell)) {</span>
+<span class="nc" id="L274">                    return dateFormatter.format(cell.getLocalDateTimeCellValue().toLocalDate());</span>
+                } else {
+                    // Avoid scientific notation
+<span class="nc" id="L277">                    return BigDecimal.valueOf(cell.getNumericCellValue()).toPlainString();</span>
+                }
+            case BOOLEAN:
+<span class="nc" id="L280">                return Boolean.toString(cell.getBooleanCellValue());</span>
+            case FORMULA:
+<span class="nc" id="L282">                return cell.getCellFormula();</span>
+            default:
+<span class="nc" id="L284">                return &quot;&quot;;</span>
+        }
+    }
+
+    public List&lt;Transaction&gt; importFromCSV(String filePath) throws IOException {
+<span class="fc" id="L289">        List&lt;Transaction&gt; importedTransactions = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L290">        importErrors.clear();</span>
+        
+<span class="fc" id="L292">        try (FileReader reader = new FileReader(filePath);</span>
+<span class="fc" id="L293">             CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT</span>
+<span class="fc" id="L294">                 .withFirstRecordAsHeader()</span>
+<span class="fc" id="L295">                 .withIgnoreHeaderCase()</span>
+<span class="fc" id="L296">                 .withTrim())) {</span>
+            
+<span class="fc" id="L298">            int recordNumber = 1;</span>
+<span class="fc" id="L299">            List&lt;Transaction&gt; batch = new ArrayList&lt;&gt;();</span>
+            
+<span class="fc bfc" id="L301" title="All 2 branches covered.">            for (CSVRecord record : csvParser) {</span>
+                try {
+<span class="fc" id="L303">                    validateRecord(record);</span>
+<span class="fc" id="L304">                    Transaction transaction = parseTransaction(record);</span>
+<span class="fc" id="L305">                    batch.add(transaction);</span>
+                    
+<span class="pc bpc" id="L307" title="1 of 2 branches missed.">                    if (batch.size() &gt;= BATCH_SIZE) {</span>
+<span class="nc" id="L308">                        importedTransactions.addAll(batch);</span>
+<span class="nc" id="L309">                        transactions.addAll(batch);</span>
+<span class="nc" id="L310">                        batch.clear();</span>
+                    }
+<span class="nc" id="L312">                } catch (Exception e) {</span>
+<span class="nc" id="L313">                    String errorMessage = String.format(&quot;Row %d: %s&quot;, recordNumber, e.getMessage());</span>
+<span class="nc" id="L314">                    importErrors.add(new ImportError(recordNumber, errorMessage));</span>
+<span class="nc" id="L315">                    logger.error(errorMessage, e);</span>
+<span class="fc" id="L316">                }</span>
+<span class="fc" id="L317">                recordNumber++;</span>
+<span class="fc" id="L318">            }</span>
+            
+            // Process the last batch
+<span class="pc bpc" id="L321" title="1 of 2 branches missed.">            if (!batch.isEmpty()) {</span>
+<span class="fc" id="L322">                importedTransactions.addAll(batch);</span>
+<span class="fc" id="L323">                transactions.addAll(batch);</span>
+            }
+        }
+        
+        // If this is not the default file, save the combined data
+<span class="pc bpc" id="L328" title="1 of 2 branches missed.">        if (!filePath.equals(DEFAULT_DATA_FILE)) {</span>
+<span class="fc" id="L329">            saveTransactionsToFile();</span>
+        }
+        
+<span class="fc" id="L332">        return importedTransactions;</span>
+    }
+    
+    private void saveTransactionsToFile() {
+        try {
+<span class="fc" id="L337">            File defaultFile = new File(DEFAULT_DATA_FILE);</span>
+<span class="fc" id="L338">            File directory = defaultFile.getParentFile();</span>
+<span class="pc bpc" id="L339" title="1 of 2 branches missed.">            if (!directory.exists()) {</span>
+<span class="nc" id="L340">                directory.mkdirs();</span>
+            }
+            
+            // Sort transactions by date for better readability
+<span class="fc" id="L344">            List&lt;Transaction&gt; sortedTransactions = new ArrayList&lt;&gt;(transactions);</span>
+<span class="fc" id="L345">            sortedTransactions.sort(Comparator.comparing(Transaction::getDateTime));</span>
+            
+<span class="fc" id="L347">            try (FileWriter writer = new FileWriter(DEFAULT_DATA_FILE);</span>
+<span class="fc" id="L348">                 CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT</span>
+<span class="fc" id="L349">                     .withHeader(&quot;Date&quot;, &quot;Description&quot;, &quot;Amount&quot;, &quot;Category&quot;, &quot;Payment Method&quot;, &quot;Currency&quot;))) {</span>
+                
+<span class="fc bfc" id="L351" title="All 2 branches covered.">                for (Transaction transaction : sortedTransactions) {</span>
+<span class="fc" id="L352">                    String date = transaction.getDateTime().toLocalDate().format(dateFormatter);</span>
+<span class="fc" id="L353">                    String description = transaction.getDescription();</span>
+<span class="fc" id="L354">                    BigDecimal amount = transaction.getAmount();</span>
+<span class="fc bfc" id="L355" title="All 2 branches covered.">                    if (transaction.getType() == TransactionType.EXPENSE) {</span>
+<span class="fc" id="L356">                        amount = amount.negate();</span>
+                    }
+                    
+<span class="fc" id="L359">                    csvPrinter.printRecord(</span>
+                        date,
+                        description,
+<span class="fc" id="L362">                        amount.toString(),</span>
+<span class="fc" id="L363">                        transaction.getCategory(),</span>
+<span class="fc" id="L364">                        transaction.getPaymentMethod(),</span>
+<span class="fc" id="L365">                        transaction.getCurrency()</span>
+                    );
+<span class="fc" id="L367">                }</span>
+                
+<span class="fc" id="L369">                csvPrinter.flush();</span>
+<span class="fc" id="L370">                logger.info(&quot;Saved {} transactions to default file&quot;, transactions.size());</span>
+            }
+<span class="nc" id="L372">        } catch (IOException e) {</span>
+<span class="nc" id="L373">            logger.error(&quot;Failed to save transactions to file&quot;, e);</span>
+<span class="fc" id="L374">        }</span>
+<span class="fc" id="L375">    }</span>
+    
+    private void validateRecord(CSVRecord record) throws IllegalArgumentException {
+<span class="fc" id="L378">        validateField(record, &quot;Date&quot;, &quot;Date&quot;);</span>
+<span class="fc" id="L379">        validateField(record, &quot;Amount&quot;, &quot;Amount&quot;);</span>
+<span class="fc" id="L380">        validateField(record, &quot;Category&quot;, &quot;Category&quot;);</span>
+<span class="fc" id="L381">        validateField(record, &quot;Description&quot;, &quot;Description&quot;);</span>
+<span class="fc" id="L382">        validateField(record, &quot;Payment Method&quot;, &quot;Payment Method&quot;);</span>
+<span class="fc" id="L383">        validateField(record, &quot;Currency&quot;, &quot;Currency&quot;);</span>
+        
+        // Validate amount format
+        try {
+<span class="fc" id="L387">            new BigDecimal(record.get(&quot;Amount&quot;));</span>
+<span class="nc" id="L388">        } catch (NumberFormatException e) {</span>
+<span class="nc" id="L389">            throw new IllegalArgumentException(&quot;Invalid amount format&quot;);</span>
+<span class="fc" id="L390">        }</span>
+<span class="fc" id="L391">    }</span>
+    
+    private void validateField(CSVRecord record, String fieldName, String displayName) {
+<span class="pc bpc" id="L394" title="1 of 2 branches missed.">        if (!record.isMapped(fieldName)) {</span>
+<span class="nc" id="L395">            throw new IllegalArgumentException(String.format(&quot;Missing required field: %s&quot;, displayName));</span>
+        }
+<span class="fc" id="L397">        String value = record.get(fieldName);</span>
+<span class="pc bpc" id="L398" title="2 of 4 branches missed.">        if (value == null || value.trim().isEmpty()) {</span>
+<span class="nc" id="L399">            throw new IllegalArgumentException(String.format(&quot;Field %s cannot be empty&quot;, displayName));</span>
+        }
+<span class="fc" id="L401">    }</span>
+    
+    private Transaction parseTransaction(CSVRecord record) {
+        // Parse date
+        LocalDateTime dateTime;
+        try {
+<span class="fc" id="L407">            LocalDate date = LocalDate.parse(record.get(&quot;Date&quot;), dateFormatter);</span>
+<span class="fc" id="L408">            dateTime = date.atStartOfDay();</span>
+<span class="nc" id="L409">        } catch (DateTimeParseException e) {</span>
+<span class="nc" id="L410">            throw new IllegalArgumentException(&quot;Invalid date format, should be: &quot; + dateFormatter.toString());</span>
+<span class="fc" id="L411">        }</span>
+        
+        // Parse amount and determine transaction type
+        BigDecimal amount;
+        try {
+<span class="fc" id="L416">            amount = new BigDecimal(record.get(&quot;Amount&quot;));</span>
+<span class="nc" id="L417">        } catch (NumberFormatException e) {</span>
+<span class="nc" id="L418">            throw new IllegalArgumentException(&quot;Invalid amount format&quot;);</span>
+<span class="fc" id="L419">        }</span>
+        
+<span class="fc bfc" id="L421" title="All 2 branches covered.">        TransactionType type = amount.compareTo(BigDecimal.ZERO) &lt; 0 ? </span>
+<span class="fc" id="L422">            TransactionType.EXPENSE : TransactionType.INCOME;</span>
+        
+        // Get other fields
+<span class="fc" id="L425">        String description = record.get(&quot;Description&quot;).trim();</span>
+<span class="fc" id="L426">        String category = record.get(&quot;Category&quot;).trim();</span>
+<span class="fc" id="L427">        String paymentMethod = record.get(&quot;Payment Method&quot;).trim();</span>
+<span class="fc" id="L428">        String currency = record.get(&quot;Currency&quot;).trim();</span>
+        
+        // Create transaction
+<span class="fc" id="L431">        return new Transaction(</span>
+<span class="fc" id="L432">            UUID.randomUUID().toString(),</span>
+<span class="fc" id="L433">            amount.abs(),</span>
+            category,
+            description,
+            dateTime,
+            type,
+            paymentMethod,
+            currency
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

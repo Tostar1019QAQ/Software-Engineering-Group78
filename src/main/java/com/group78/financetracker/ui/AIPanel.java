@@ -2,6 +2,7 @@ package com.group78.financetracker.ui;
 
 import com.group78.financetracker.model.Transaction;
 import com.group78.financetracker.service.AIService;
+import com.group78.financetracker.service.ReportGenerator;
 import com.group78.financetracker.service.TransactionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,7 +124,11 @@ public class AIPanel extends JPanel {
         analysisTypeComboBox = new JComboBox<>(new String[]{
             "Smart Financial Analysis & Recommendations",
             "Spending Pattern Analysis",
-            "Auto-categorization Examples"
+            "Financial Health Score",
+            "Auto-categorization Examples",
+            "Income-Expense Report",
+            "Cash Flow Forecast",
+            "Smart Savings Recommendations"
         });
         
         // Analyze button
@@ -575,9 +580,27 @@ public class AIPanel extends JPanel {
                 } else if (selectedIndex == 1) {
                     // Spending pattern analysis
                     return formatAnalysisResults(aiService.analyzeSpendingPattern(transactions));
-                } else {
+                } else if (selectedIndex == 2) {
+                    // Financial Health Score
+                    String report = aiService.generateFinancialHealthReport(transactions);
+                    return formatFinancialHealthReport(report, aiService.calculateFinancialHealthScore(transactions));
+                } else if (selectedIndex == 3) {
                     // Auto-categorization examples
                     return generateCategorizationExamples();
+                } else if (selectedIndex == 4) {
+                    // Income-Expense Report
+                    ReportGenerator reportGenerator = new ReportGenerator(aiService);
+                    return reportGenerator.generateReport("income-expense", transactions);
+                } else if (selectedIndex == 5) {
+                    // Cash Flow Forecast
+                    ReportGenerator reportGenerator = new ReportGenerator(aiService);
+                    return reportGenerator.generateReport("cash-flow", transactions);
+                } else if (selectedIndex == 6) {
+                    // Smart Savings Recommendations
+                    ReportGenerator reportGenerator = new ReportGenerator(aiService);
+                    return reportGenerator.generateReport("savings", transactions);
+                } else {
+                    return "<html><body><h1>Error</h1><p>Invalid analysis type selected.</p></body></html>";
                 }
             } catch (Exception ex) {
                 logger.error("Analysis error: {}", ex.getMessage(), ex);
@@ -709,5 +732,171 @@ public class AIPanel extends JPanel {
         sb.append("</body></html>");
         
         return sb.toString();
+    }
+    
+    /**
+     * Format financial health report with score visualization and recommendations
+     * @param aiReport AI-generated report text
+     * @param scoreData Map with score data
+     * @return HTML formatted report
+     */
+    private String formatFinancialHealthReport(String aiReport, Map<String, Object> scoreData) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<html><body>");
+        
+        // Add title
+        sb.append("<h1>Financial Health Score Analysis</h1>");
+        
+        // Get score values
+        int score = (int) scoreData.get("score");
+        String category = (String) scoreData.get("category");
+        BigDecimal savingsRate = (BigDecimal) scoreData.get("savingsRate");
+        BigDecimal expenseRatio = (BigDecimal) scoreData.get("expenseToIncomeRatio");
+        BigDecimal totalIncome = (BigDecimal) scoreData.get("totalIncome");
+        BigDecimal totalExpenses = (BigDecimal) scoreData.get("totalExpenses");
+        BigDecimal netSavings = (BigDecimal) scoreData.get("netSavings");
+        
+        // Create score visualization
+        sb.append("<div style='background-color:#f5f5f5; padding:15px; border-radius:8px; margin:15px 0;'>");
+        sb.append("<h2 style='text-align:center; margin-top:0;'>Your Financial Health Score</h2>");
+        
+        // Score visualization - circular gauge
+        String scoreColor = getScoreColor(score);
+        sb.append("<div style='text-align:center;'>");
+        sb.append("<div style='display:inline-block; width:150px; height:150px; border-radius:50%; ");
+        sb.append("background: conic-gradient(").append(scoreColor).append(" 0% ").append(score).append("%, #e0e0e0 ").append(score).append("% 100%);");
+        sb.append("position:relative;'>");
+        sb.append("<div style='position:absolute; top:15px; left:15px; width:120px; height:120px; ");
+        sb.append("border-radius:50%; background-color:white; display:flex; flex-direction:column; ");
+        sb.append("justify-content:center; align-items:center;'>");
+        sb.append("<span style='font-size:32px; font-weight:bold; color:").append(scoreColor).append(";'>").append(score).append("</span>");
+        sb.append("<span style='font-size:16px;'>").append(category).append("</span>");
+        sb.append("</div></div></div>");
+        
+        // Key metrics
+        sb.append("<div style='display:flex; justify-content:space-around; margin-top:20px;'>");
+        
+        // Savings Rate
+        String savingsColor = getSavingsRateColor(savingsRate.doubleValue());
+        sb.append("<div style='text-align:center;'>");
+        sb.append("<div style='font-size:14px;'>Savings Rate</div>");
+        sb.append("<div style='font-size:20px; font-weight:bold; color:").append(savingsColor).append(";'>");
+        sb.append(savingsRate.setScale(1, BigDecimal.ROUND_HALF_UP)).append("%</div>");
+        sb.append("</div>");
+        
+        // Expense Ratio
+        String expenseColor = getExpenseRatioColor(expenseRatio.doubleValue());
+        sb.append("<div style='text-align:center;'>");
+        sb.append("<div style='font-size:14px;'>Expense-to-Income</div>");
+        sb.append("<div style='font-size:20px; font-weight:bold; color:").append(expenseColor).append(";'>");
+        sb.append(expenseRatio.setScale(2, BigDecimal.ROUND_HALF_UP)).append("</div>");
+        sb.append("</div>");
+        
+        sb.append("</div>"); // End of metrics
+        sb.append("</div>"); // End of score visualization
+        
+        // Financial summary
+        sb.append("<h2>Financial Summary</h2>");
+        sb.append("<table style='width:100%; border-collapse:collapse;'>");
+        sb.append("<tr><th style='text-align:left; padding:8px; background-color:#f2f2f2;'>Metric</th>");
+        sb.append("<th style='text-align:right; padding:8px; background-color:#f2f2f2;'>Amount</th></tr>");
+        
+        sb.append("<tr><td style='padding:8px; border-bottom:1px solid #ddd;'>Total Income</td>");
+        sb.append("<td style='text-align:right; padding:8px; border-bottom:1px solid #ddd; color:green;'>");
+        sb.append(formatCurrency(totalIncome)).append("</td></tr>");
+        
+        sb.append("<tr><td style='padding:8px; border-bottom:1px solid #ddd;'>Total Expenses</td>");
+        sb.append("<td style='text-align:right; padding:8px; border-bottom:1px solid #ddd; color:red;'>");
+        sb.append(formatCurrency(totalExpenses)).append("</td></tr>");
+        
+        String netSavingsColor = netSavings.compareTo(BigDecimal.ZERO) >= 0 ? "green" : "red";
+        sb.append("<tr><td style='padding:8px; border-bottom:1px solid #ddd; font-weight:bold;'>Net Savings</td>");
+        sb.append("<td style='text-align:right; padding:8px; border-bottom:1px solid #ddd; font-weight:bold; color:" + netSavingsColor + ";'>");
+        sb.append(formatCurrency(netSavings)).append("</td></tr>");
+        
+        sb.append("</table>");
+        
+        // Recommendations
+        sb.append("<h2>Recommendations</h2>");
+        sb.append("<ul>");
+        
+        @SuppressWarnings("unchecked")
+        List<String> recommendations = (List<String>) scoreData.get("recommendations");
+        if (recommendations != null) {
+            for (String recommendation : recommendations) {
+                String style = "";
+                if (recommendation.startsWith("CRITICAL")) {
+                    style = " style='color:red; font-weight:bold;'";
+                    recommendation = recommendation.replace("CRITICAL: ", "");
+                }
+                sb.append("<li").append(style).append(">").append(recommendation).append("</li>");
+            }
+        }
+        sb.append("</ul>");
+        
+        // Detailed analysis from AI
+        if (aiReport != null && !aiReport.isEmpty()) {
+            sb.append("<h2>Detailed Analysis</h2>");
+            
+            // Replace line breaks with HTML breaks
+            String htmlText = aiReport.replace("\n\n", "</p><p>")
+                                    .replace("\n", "<br/>")
+                                    .replace("**", ""); // Remove markdown bold markers
+            
+            // Simple heuristic to identify potential headers
+            htmlText = htmlText.replaceAll("(?m)^([A-Z][A-Za-z0-9 ]+:)<br/>", "<h3>$1</h3>");
+            htmlText = htmlText.replaceAll("(?m)<p>([A-Z][A-Za-z0-9 ]+:)</p>", "<h3>$1</h3><p>");
+            
+            // Format bullet points (if they exist)
+            htmlText = htmlText.replace("• ", "&#8226; ");
+            htmlText = htmlText.replace("- ", "&#8226; ");
+            
+            sb.append("<div class='ai-analysis'>");
+            sb.append("<p>").append(htmlText).append("</p>");
+            sb.append("</div>");
+        }
+        
+        sb.append("</body></html>");
+        return sb.toString();
+    }
+    
+    /**
+     * Format currency value with $ sign
+     */
+    private String formatCurrency(BigDecimal amount) {
+        return "$" + String.format("%.2f", amount);
+    }
+    
+    /**
+     * Get appropriate color for the financial health score
+     */
+    private String getScoreColor(int score) {
+        if (score >= 90) return "#4CAF50"; // Excellent - green
+        if (score >= 75) return "#8BC34A"; // Good - light green
+        if (score >= 60) return "#FFC107"; // Average - amber
+        if (score >= 40) return "#FF9800"; // Below Average - orange
+        return "#F44336"; // Poor - red
+    }
+    
+    /**
+     * Get appropriate color for savings rate
+     */
+    private String getSavingsRateColor(double savingsRate) {
+        if (savingsRate >= 20) return "#4CAF50"; // Excellent - green
+        if (savingsRate >= 10) return "#8BC34A"; // Good - light green
+        if (savingsRate >= 5) return "#FFC107"; // Average - amber
+        if (savingsRate >= 0) return "#FF9800"; // Below Average - orange
+        return "#F44336"; // Poor - red
+    }
+    
+    /**
+     * Get appropriate color for expense ratio
+     */
+    private String getExpenseRatioColor(double expenseRatio) {
+        if (expenseRatio <= 0.6) return "#4CAF50"; // Excellent - green
+        if (expenseRatio <= 0.8) return "#8BC34A"; // Good - light green
+        if (expenseRatio <= 0.9) return "#FFC107"; // Average - amber
+        if (expenseRatio <= 1.0) return "#FF9800"; // Below Average - orange
+        return "#F44336"; // Poor - red
     }
 } 

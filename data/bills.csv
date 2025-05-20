@@ -7,3 +7,43 @@ e4ba9d68-0a1c-3ad0-94a9-2b5c3a70d5e5,Rent,3500.00,2023-11-01,Bank Transfer,true,
 2991ab74-0184-49b2-b3e6-0db135ac547f,Cash1,300,2025-04-24,Cash,true,false
 2c0c8bd6-ce1e-4b38-a007-c923c39ac698,123,33333,2025-04-20,Credit Card,false,false
 325f8d45-1188-4be8-99d9-353e777f6aba,22,333,2025-04-22,Credit Card,true,false
+6a4c1196-1efc-47cc-9799-6fa6ae04c259,水电费,300,2025-05-23,银行卡,true,true
+a0d3f1c9-4dcb-4be1-8525-f65f1cec8f82,网络费,200,2025-06-19,微信支付,false,true
+a9aa098b-5802-4794-9178-f7b895baf320,租房费用,2000,2025-06-04,支付宝,true,false
+bd70dcb5-887b-471f-a238-2172c764803b,手机月费,150,2025-05-30,银行卡,false,true
+ea9d8825-533c-4ddf-be4f-bceeb0e19aaf,水电费,300,2025-05-23,银行卡,true,true
+ea14af3f-7740-4b17-afd7-8324d452c6ad,网络费,200,2025-06-19,微信支付,false,true
+631312c3-34a9-4c88-a7f7-a1696ab6faf4,租房费用,2000,2025-06-04,支付宝,true,false
+1b98bcca-651e-4767-b6ef-025e02ae2ba2,手机月费,150,2025-05-30,银行卡,false,true
+6ae24568-772b-4a03-bd39-bd32cf96b532,水电费,300,2025-05-23,银行卡,true,true
+91ef72ba-e38b-46b5-a606-6e918195949e,网络费,200,2025-06-19,微信支付,false,true
+2b96101c-0e53-4907-8cd7-4ba67142d0b1,租房费用,2000,2025-06-04,支付宝,true,false
+f2a1fd70-dc83-4e29-8741-e0499b95e70f,手机月费,150,2025-05-30,银行卡,false,true
+7fd87a55-e9c0-452c-a765-cd96e1821a3d,水电费,300,2025-05-23,银行卡,true,true
+bb3d8ded-2993-400f-b3c7-d9d46bf0b866,网络费,200,2025-06-19,微信支付,false,true
+ce7fe1ef-9ff9-44e6-a02a-08c13a074b00,租房费用,2000,2025-06-04,支付宝,true,false
+a991d87c-8988-4b8d-ab80-f3a3c8336098,手机月费,150,2025-05-30,银行卡,false,true
+05c81399-1de8-42e8-a316-eda04da9c7ee,水电费,300,2025-05-23,银行卡,true,true
+dd7a4711-55f7-4a95-9976-bc286922f8ff,网络费,200,2025-06-19,微信支付,false,true
+6154ed97-26ca-4388-a264-b2314fbc36c3,租房费用,2000,2025-06-04,支付宝,true,false
+187d2a0f-a110-49d0-83c6-179494ddc1ab,手机月费,150,2025-05-30,银行卡,false,true
+8febf117-4f2d-4a11-b1a2-a8338b98ae93,水电费,300,2025-05-23,银行卡,true,true
+de2524cf-5b5d-4505-86cd-a2efb96f30a0,网络费,200,2025-06-19,微信支付,false,true
+67bbcd10-1a23-49d6-a23a-a1e67a1cd937,租房费用,2000,2025-06-04,支付宝,true,false
+d8dc3d43-08fe-4f2d-acde-1cf55529058e,手机月费,150,2025-05-30,银行卡,false,true
+f4ef3d2a-daa5-4ec8-bdb0-36e87ec3b166,水电费,300,2025-05-23,银行卡,true,true
+ab5a4135-deba-4aa6-a088-c9e53a3493a8,网络费,200,2025-06-19,微信支付,false,true
+db165673-a6dc-4767-9685-4152534c8a07,租房费用,2000,2025-06-04,支付宝,true,false
+d01895e8-819f-4404-8c00-6a05566bbe40,手机月费,150,2025-05-30,银行卡,false,true
+3488a167-b687-47f1-b284-5b145c233840,水电费,300,2025-05-23,银行卡,true,true
+3c35575f-8dd2-41af-a2df-601f0c29b30d,网络费,200,2025-06-19,微信支付,false,true
+fbad0f51-1371-45ab-ac42-b45da6bdb17c,租房费用,2000,2025-06-04,支付宝,true,false
+ace7fd04-129d-4652-954c-2a4dce65c375,手机月费,150,2025-05-30,银行卡,false,true
+d4ddd5d7-4513-42e0-9114-fed84951d41a,Utility Bill,300,2025-05-23,Bank Card,true,true
+066822ca-45dd-40d8-92fe-cf603c2b0aaa,Internet Fee,200,2025-06-19,WeChat Pay,false,true
+1a3babd9-0eca-488a-9d0e-275c1b99e242,Rent Payment,2000,2025-06-04,Alipay,true,false
+03eed2f6-9290-4b71-8385-bbc95b0c38c1,Monthly Phone Bill,150,2025-05-30,Bank Card,false,true
+60d852e4-300c-476b-9c24-1c477c3f4288,Utility Bill,300,2025-05-23,Bank Card,true,true
+599f83b5-0d63-48b3-8645-4fd63f64a0c8,Internet Fee,200,2025-06-19,WeChat Pay,false,true
+042ded27-fdf0-420b-b56b-ca43cd50ad93,Rent Payment,2000,2025-06-04,Alipay,true,false
+5aa01f76-a0c5-4c45-a215-333831143ca3,Monthly Phone Bill,150,2025-05-30,Bank Card,false,true

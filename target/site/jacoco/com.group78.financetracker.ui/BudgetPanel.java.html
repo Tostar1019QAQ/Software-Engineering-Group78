@@ -1,0 +1,1114 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BudgetPanel.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">finance-tracker</a> &gt; <a href="index.source.html" class="el_package">com.group78.financetracker.ui</a> &gt; <span class="el_source">BudgetPanel.java</span></div><h1>BudgetPanel.java</h1><pre class="source lang-java linenums">package com.group78.financetracker.ui;
+
+import com.group78.financetracker.service.ImportService;
+import com.group78.financetracker.service.DashboardService;
+import com.group78.financetracker.model.Transaction;
+import com.group78.financetracker.model.TransactionType;
+import com.toedter.calendar.JDateChooser;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
+import java.awt.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.*;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.text.SimpleDateFormat;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.HashSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
+import java.io.FileReader;
+import org.apache.commons.csv.CSVParser;
+
+public class BudgetPanel extends JPanel {
+<span class="nc" id="L35">    private static final Logger logger = LoggerFactory.getLogger(BudgetPanel.class);</span>
+    private JPanel formPanel;
+    private JPanel totalBudgetPanel;
+    private JPanel categoryPanel;
+    private JPanel tablePanel;
+    private JPanel summaryPanel;
+    private JTable budgetTable;
+    private DefaultTableModel tableModel;
+    private JTextField categoryField;
+    private JTextField amountField;
+    private JTextField totalBudgetField;
+    private JDateChooser startDateChooser;
+    private JDateChooser endDateChooser;
+    private JComboBox&lt;String&gt; existingCategoriesCombo;
+    
+<span class="nc" id="L50">    private BigDecimal totalBudget = BigDecimal.ZERO;</span>
+<span class="nc" id="L51">    private BigDecimal totalSpent = BigDecimal.ZERO;</span>
+    private final CardLayout cardLayout;
+    private final JPanel contentPanel;
+    private final ImportService importService;
+    private final DashboardService dashboardService;
+<span class="nc" id="L56">    private Map&lt;String, BigDecimal&gt; categoryBudgets = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L57">    private Map&lt;String, BigDecimal&gt; categorySpending = new HashMap&lt;&gt;();</span>
+    private LocalDate budgetStartDate;
+    private LocalDate budgetEndDate;
+
+<span class="nc" id="L61">    public BudgetPanel(CardLayout cardLayout, JPanel contentPanel) {</span>
+<span class="nc" id="L62">        this.cardLayout = cardLayout;</span>
+<span class="nc" id="L63">        this.contentPanel = contentPanel;</span>
+<span class="nc" id="L64">        this.importService = new ImportService();</span>
+<span class="nc" id="L65">        this.dashboardService = new DashboardService();</span>
+        
+<span class="nc" id="L67">        setLayout(new BorderLayout(10, 10));</span>
+<span class="nc" id="L68">        setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));</span>
+        
+        // First create all panels and components
+<span class="nc" id="L71">        createTotalBudgetPanel();</span>
+<span class="nc" id="L72">        createCategoryPanel();</span>
+<span class="nc" id="L73">        createTablePanel();</span>
+<span class="nc" id="L74">        createSummaryPanel();</span>
+        
+        // Then set layout
+<span class="nc" id="L77">        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));</span>
+<span class="nc" id="L78">        JPanel topPanel = new JPanel(new BorderLayout(10, 10));</span>
+        
+<span class="nc" id="L80">        topPanel.add(totalBudgetPanel, BorderLayout.NORTH);</span>
+<span class="nc" id="L81">        topPanel.add(categoryPanel, BorderLayout.CENTER);</span>
+        
+<span class="nc" id="L83">        mainPanel.add(topPanel, BorderLayout.NORTH);</span>
+<span class="nc" id="L84">        mainPanel.add(tablePanel, BorderLayout.CENTER);</span>
+        
+        // Make the whole panel scrollable
+<span class="nc" id="L87">        JScrollPane scrollPane = new JScrollPane(mainPanel);</span>
+<span class="nc" id="L88">        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);</span>
+<span class="nc" id="L89">        scrollPane.setBorder(BorderFactory.createEmptyBorder());</span>
+        
+<span class="nc" id="L91">        add(createHeaderPanel(), BorderLayout.NORTH);</span>
+<span class="nc" id="L92">        add(scrollPane, BorderLayout.CENTER);</span>
+<span class="nc" id="L93">        add(summaryPanel, BorderLayout.SOUTH);</span>
+        
+        // Initialize current month as default budget period
+<span class="nc" id="L96">        setDefaultBudgetPeriod();</span>
+        
+        // Load transaction data from ImportService
+<span class="nc" id="L99">        loadTransactionData();</span>
+        
+        // Update category combo box
+<span class="nc" id="L102">        updateCategoryComboBox();</span>
+        
+        // Load budget data if exists
+<span class="nc" id="L105">        loadBudgetData();</span>
+<span class="nc" id="L106">    }</span>
+
+    private void setDefaultBudgetPeriod() {
+<span class="nc" id="L109">        LocalDate now = LocalDate.now();</span>
+<span class="nc" id="L110">        budgetStartDate = now.withDayOfMonth(1);</span>
+<span class="nc" id="L111">        budgetEndDate = now.withDayOfMonth(now.lengthOfMonth());</span>
+        
+        // Update date choosers
+<span class="nc" id="L114">        Date startDate = Date.from(budgetStartDate.atStartOfDay(ZoneId.systemDefault()).toInstant());</span>
+<span class="nc" id="L115">        Date endDate = Date.from(budgetEndDate.atStartOfDay(ZoneId.systemDefault()).toInstant());</span>
+        
+<span class="nc" id="L117">        startDateChooser.setDate(startDate);</span>
+<span class="nc" id="L118">        endDateChooser.setDate(endDate);</span>
+<span class="nc" id="L119">    }</span>
+
+    private void loadTransactionData() {
+        try {
+<span class="nc" id="L123">            List&lt;Transaction&gt; transactions = importService.getAllTransactions();</span>
+<span class="nc" id="L124">            calculateCategorySpending(transactions);</span>
+<span class="nc" id="L125">            updateBudgetTable();</span>
+<span class="nc" id="L126">            updateSummary();</span>
+<span class="nc" id="L127">        } catch (Exception e) {</span>
+<span class="nc" id="L128">            logger.error(&quot;Error loading transaction data: {}&quot;, e.getMessage(), e);</span>
+<span class="nc" id="L129">            JOptionPane.showMessageDialog(this,</span>
+<span class="nc" id="L130">                &quot;Error loading transaction data: &quot; + e.getMessage(),</span>
+                &quot;Error&quot;,
+                JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L133">        }</span>
+<span class="nc" id="L134">    }</span>
+
+    private void calculateCategorySpending(List&lt;Transaction&gt; transactions) {
+<span class="nc" id="L137">        categorySpending.clear();</span>
+<span class="nc" id="L138">        totalSpent = BigDecimal.ZERO;</span>
+        
+        // 根据日期范围筛选交易
+<span class="nc bnc" id="L141" title="All 2 branches missed.">        for (Transaction transaction : transactions) {</span>
+<span class="nc" id="L142">            LocalDate transactionDate = transaction.getDateTime().toLocalDate();</span>
+            
+            // 检查交易是否在预算周期内
+<span class="nc bnc" id="L145" title="All 4 branches missed.">            if ((transactionDate.isEqual(budgetStartDate) || transactionDate.isAfter(budgetStartDate)) &amp;&amp;</span>
+<span class="nc bnc" id="L146" title="All 4 branches missed.">                (transactionDate.isEqual(budgetEndDate) || transactionDate.isBefore(budgetEndDate))) {</span>
+                
+                // 只处理支出
+<span class="nc bnc" id="L149" title="All 2 branches missed.">                if (transaction.getType() == TransactionType.EXPENSE) {</span>
+<span class="nc" id="L150">                    String category = transaction.getCategory();</span>
+<span class="nc" id="L151">                    BigDecimal amount = transaction.getAmount();</span>
+                    
+                    // 添加到类别支出
+<span class="nc" id="L154">                    categorySpending.merge(category, amount, BigDecimal::add);</span>
+                    
+                    // 添加到总支出
+<span class="nc" id="L157">                    totalSpent = totalSpent.add(amount);</span>
+                }
+            }
+<span class="nc" id="L160">        }</span>
+        
+<span class="nc" id="L162">        logger.debug(&quot;Calculated spending: {} across {} categories&quot;, totalSpent, categorySpending.size());</span>
+<span class="nc" id="L163">    }</span>
+
+    private JPanel createHeaderPanel() {
+<span class="nc" id="L166">        JPanel header = new JPanel(new BorderLayout());</span>
+<span class="nc" id="L167">        header.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));</span>
+
+        // Title
+<span class="nc" id="L170">        JLabel titleLabel = new JLabel(&quot;Budget Management&quot;);</span>
+<span class="nc" id="L171">        titleLabel.setFont(new Font(&quot;Arial&quot;, Font.BOLD, 24));</span>
+        
+        // Back button
+<span class="nc" id="L174">        JButton backButton = new JButton(&quot;← Back to Dashboard&quot;);</span>
+<span class="nc" id="L175">        backButton.setFocusPainted(false);</span>
+<span class="nc" id="L176">        backButton.addActionListener(e -&gt; cardLayout.show(contentPanel, &quot;Dashboard&quot;));</span>
+        
+        // Refresh button
+<span class="nc" id="L179">        JButton refreshButton = new JButton(&quot;↻ Refresh&quot;);</span>
+<span class="nc" id="L180">        refreshButton.setFocusPainted(false);</span>
+<span class="nc" id="L181">        refreshButton.addActionListener(e -&gt; loadTransactionData());</span>
+        
+<span class="nc" id="L183">        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));</span>
+<span class="nc" id="L184">        rightPanel.add(refreshButton);</span>
+        
+<span class="nc" id="L186">        header.add(backButton, BorderLayout.WEST);</span>
+<span class="nc" id="L187">        header.add(titleLabel, BorderLayout.CENTER);</span>
+<span class="nc" id="L188">        header.add(rightPanel, BorderLayout.EAST);</span>
+        
+<span class="nc" id="L190">        return header;</span>
+    }
+
+    private void createTotalBudgetPanel() {
+<span class="nc" id="L194">        totalBudgetPanel = new JPanel(new BorderLayout(10, 10));</span>
+<span class="nc" id="L195">        totalBudgetPanel.setBorder(BorderFactory.createTitledBorder(&quot;Set Total Budget&quot;));</span>
+
+        // Input fields panel with vertical layout
+<span class="nc" id="L198">        JPanel inputsPanel = new JPanel();</span>
+<span class="nc" id="L199">        inputsPanel.setLayout(new BoxLayout(inputsPanel, BoxLayout.Y_AXIS));</span>
+<span class="nc" id="L200">        inputsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));</span>
+        
+<span class="nc" id="L202">        totalBudgetField = new JTextField();</span>
+<span class="nc" id="L203">        startDateChooser = new JDateChooser();</span>
+<span class="nc" id="L204">        endDateChooser = new JDateChooser();</span>
+<span class="nc" id="L205">        startDateChooser.setDateFormatString(&quot;yyyy-MM-dd&quot;);</span>
+<span class="nc" id="L206">        endDateChooser.setDateFormatString(&quot;yyyy-MM-dd&quot;);</span>
+        
+        // Total Budget input
+<span class="nc" id="L209">        JPanel budgetPanel = new JPanel(new BorderLayout(5, 5));</span>
+<span class="nc" id="L210">        budgetPanel.add(new JLabel(&quot;Total Budget Amount:&quot;), BorderLayout.NORTH);</span>
+<span class="nc" id="L211">        budgetPanel.add(totalBudgetField, BorderLayout.CENTER);</span>
+        
+        // Date range panel with both date choosers in one row
+<span class="nc" id="L214">        JPanel dateRangePanel = new JPanel(new BorderLayout(5, 5));</span>
+<span class="nc" id="L215">        JPanel dateLabelsPanel = new JPanel(new GridLayout(1, 2, 10, 0));</span>
+<span class="nc" id="L216">        JPanel dateChoosersPanel = new JPanel(new GridLayout(1, 2, 10, 0));</span>
+        
+<span class="nc" id="L218">        dateLabelsPanel.add(new JLabel(&quot;Start Date:&quot;));</span>
+<span class="nc" id="L219">        dateLabelsPanel.add(new JLabel(&quot;End Date:&quot;));</span>
+<span class="nc" id="L220">        dateChoosersPanel.add(startDateChooser);</span>
+<span class="nc" id="L221">        dateChoosersPanel.add(endDateChooser);</span>
+        
+<span class="nc" id="L223">        dateRangePanel.add(dateLabelsPanel, BorderLayout.NORTH);</span>
+<span class="nc" id="L224">        dateRangePanel.add(dateChoosersPanel, BorderLayout.CENTER);</span>
+        
+        // Add some spacing between components
+<span class="nc" id="L227">        budgetPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));</span>
+        
+<span class="nc" id="L229">        inputsPanel.add(budgetPanel);</span>
+<span class="nc" id="L230">        inputsPanel.add(dateRangePanel);</span>
+        
+        // Buttons panel
+<span class="nc" id="L233">        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));</span>
+<span class="nc" id="L234">        JButton setTotalBudgetButton = new JButton(&quot;Set Total Budget&quot;);</span>
+        
+<span class="nc" id="L236">        setTotalBudgetButton.addActionListener(e -&gt; setTotalBudget());</span>
+        
+<span class="nc" id="L238">        buttonsPanel.add(setTotalBudgetButton);</span>
+
+<span class="nc" id="L240">        totalBudgetPanel.add(inputsPanel, BorderLayout.CENTER);</span>
+<span class="nc" id="L241">        totalBudgetPanel.add(buttonsPanel, BorderLayout.SOUTH);</span>
+<span class="nc" id="L242">    }</span>
+
+    private void createCategoryPanel() {
+<span class="nc" id="L245">        categoryPanel = new JPanel(new BorderLayout(10, 10));</span>
+<span class="nc" id="L246">        categoryPanel.setBorder(BorderFactory.createTitledBorder(&quot;Add Budget Category&quot;));</span>
+
+        // Input fields panel with vertical layout
+<span class="nc" id="L249">        JPanel inputsPanel = new JPanel();</span>
+<span class="nc" id="L250">        inputsPanel.setLayout(new BoxLayout(inputsPanel, BoxLayout.Y_AXIS));</span>
+<span class="nc" id="L251">        inputsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));</span>
+        
+<span class="nc" id="L253">        categoryField = new JTextField();</span>
+<span class="nc" id="L254">        amountField = new JTextField();</span>
+<span class="nc" id="L255">        existingCategoriesCombo = new JComboBox&lt;&gt;();</span>
+        
+        // Add a default option
+<span class="nc" id="L258">        existingCategoriesCombo.addItem(&quot;-- Select Existing Category --&quot;);</span>
+<span class="nc" id="L259">        existingCategoriesCombo.addActionListener(e -&gt; {</span>
+<span class="nc" id="L260">            String selected = (String) existingCategoriesCombo.getSelectedItem();</span>
+<span class="nc bnc" id="L261" title="All 4 branches missed.">            if (selected != null &amp;&amp; !selected.equals(&quot;-- Select Existing Category --&quot;)) {</span>
+<span class="nc" id="L262">                categoryField.setText(selected);</span>
+            }
+<span class="nc" id="L264">        });</span>
+        
+        // Category selection panel
+<span class="nc" id="L267">        JPanel categorySelectionPanel = new JPanel(new BorderLayout(5, 5));</span>
+<span class="nc" id="L268">        categorySelectionPanel.add(new JLabel(&quot;Select Existing Category:&quot;), BorderLayout.NORTH);</span>
+<span class="nc" id="L269">        categorySelectionPanel.add(existingCategoriesCombo, BorderLayout.CENTER);</span>
+        
+        // Category name panel
+<span class="nc" id="L272">        JPanel categoryNamePanel = new JPanel(new BorderLayout(5, 5));</span>
+<span class="nc" id="L273">        categoryNamePanel.add(new JLabel(&quot;Category Name:&quot;), BorderLayout.NORTH);</span>
+<span class="nc" id="L274">        categoryNamePanel.add(categoryField, BorderLayout.CENTER);</span>
+        
+        // Budget amount panel
+<span class="nc" id="L277">        JPanel amountPanel = new JPanel(new BorderLayout(5, 5));</span>
+<span class="nc" id="L278">        amountPanel.add(new JLabel(&quot;Budget Amount:&quot;), BorderLayout.NORTH);</span>
+<span class="nc" id="L279">        amountPanel.add(amountField, BorderLayout.CENTER);</span>
+        
+        // Add some spacing between components
+<span class="nc" id="L282">        categorySelectionPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));</span>
+<span class="nc" id="L283">        categoryNamePanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));</span>
+        
+<span class="nc" id="L285">        inputsPanel.add(categorySelectionPanel);</span>
+<span class="nc" id="L286">        inputsPanel.add(categoryNamePanel);</span>
+<span class="nc" id="L287">        inputsPanel.add(amountPanel);</span>
+
+        // Buttons panel
+<span class="nc" id="L290">        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));</span>
+<span class="nc" id="L291">        JButton clearButton = new JButton(&quot;Clear Form&quot;);</span>
+<span class="nc" id="L292">        JButton addButton = new JButton(&quot;Add Category&quot;);</span>
+        
+<span class="nc" id="L294">        clearButton.addActionListener(e -&gt; clearForm());</span>
+<span class="nc" id="L295">        addButton.addActionListener(e -&gt; addBudgetCategory());</span>
+        
+<span class="nc" id="L297">        buttonsPanel.add(clearButton);</span>
+<span class="nc" id="L298">        buttonsPanel.add(addButton);</span>
+
+<span class="nc" id="L300">        categoryPanel.add(inputsPanel, BorderLayout.CENTER);</span>
+<span class="nc" id="L301">        categoryPanel.add(buttonsPanel, BorderLayout.SOUTH);</span>
+<span class="nc" id="L302">    }</span>
+
+    private void setTotalBudget() {
+        try {
+            // Validate inputs
+<span class="nc bnc" id="L307" title="All 2 branches missed.">            if (totalBudgetField.getText().trim().isEmpty()) {</span>
+<span class="nc" id="L308">                JOptionPane.showMessageDialog(this, </span>
+                    &quot;Please enter a total budget amount.&quot;, 
+                    &quot;Input Error&quot;, 
+                    JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L312">                return;</span>
+            }
+            
+<span class="nc bnc" id="L315" title="All 4 branches missed.">            if (startDateChooser.getDate() == null || endDateChooser.getDate() == null) {</span>
+<span class="nc" id="L316">                JOptionPane.showMessageDialog(this, </span>
+                    &quot;Please select start and end dates for the budget period.&quot;, 
+                    &quot;Input Error&quot;, 
+                    JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L320">                return;</span>
+            }
+            
+            // Parse total budget
+<span class="nc" id="L324">            BigDecimal newTotalBudget = new BigDecimal(totalBudgetField.getText().trim());</span>
+<span class="nc bnc" id="L325" title="All 2 branches missed.">            if (newTotalBudget.compareTo(BigDecimal.ZERO) &lt;= 0) {</span>
+<span class="nc" id="L326">                JOptionPane.showMessageDialog(this, </span>
+                    &quot;Please enter a valid amount greater than zero.&quot;, 
+                    &quot;Input Error&quot;, 
+                    JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L330">                return;</span>
+            }
+            
+            // Parse dates
+<span class="nc" id="L334">            LocalDate newStartDate = startDateChooser.getDate().toInstant()</span>
+<span class="nc" id="L335">                .atZone(ZoneId.systemDefault())</span>
+<span class="nc" id="L336">                .toLocalDate();</span>
+            
+<span class="nc" id="L338">            LocalDate newEndDate = endDateChooser.getDate().toInstant()</span>
+<span class="nc" id="L339">                .atZone(ZoneId.systemDefault())</span>
+<span class="nc" id="L340">                .toLocalDate();</span>
+            
+            // Validate dates
+<span class="nc bnc" id="L343" title="All 2 branches missed.">            if (newEndDate.isBefore(newStartDate)) {</span>
+<span class="nc" id="L344">                JOptionPane.showMessageDialog(this, </span>
+                    &quot;End date cannot be before start date.&quot;, 
+                    &quot;Input Error&quot;, 
+                    JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L348">                return;</span>
+            }
+            
+            // Update budget and date range
+<span class="nc" id="L352">            totalBudget = newTotalBudget;</span>
+<span class="nc" id="L353">            budgetStartDate = newStartDate;</span>
+<span class="nc" id="L354">            budgetEndDate = newEndDate;</span>
+            
+            // Recalculate category spending
+<span class="nc" id="L357">            loadTransactionData();</span>
+            
+            // Save budget data
+<span class="nc" id="L360">            saveBudgetData();</span>
+            
+            // Show success message
+<span class="nc" id="L363">            JOptionPane.showMessageDialog(this, </span>
+                &quot;Total budget set successfully!&quot;, 
+                &quot;Success&quot;, 
+                JOptionPane.INFORMATION_MESSAGE);
+                
+<span class="nc" id="L368">        } catch (NumberFormatException e) {</span>
+<span class="nc" id="L369">            JOptionPane.showMessageDialog(this, </span>
+                &quot;Please enter a valid amount.&quot;, 
+                &quot;Input Error&quot;, 
+                JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L373">        }</span>
+<span class="nc" id="L374">    }</span>
+
+    private void createTablePanel() {
+<span class="nc" id="L377">        tablePanel = new JPanel(new BorderLayout());</span>
+<span class="nc" id="L378">        tablePanel.setBorder(BorderFactory.createTitledBorder(&quot;Budget Categories&quot;));</span>
+
+        // Create table model
+<span class="nc" id="L381">        String[] columns = {&quot;Category&quot;, &quot;Budget Amount&quot;, &quot;Spent Amount&quot;, &quot;Remaining&quot;, &quot;Progress&quot;, &quot;Actions&quot;};</span>
+<span class="nc" id="L382">        tableModel = new DefaultTableModel(columns, 0) {</span>
+            @Override
+            public boolean isCellEditable(int row, int column) {
+<span class="nc bnc" id="L385" title="All 2 branches missed.">                return column == 5; // Only actions column is editable</span>
+            }
+            
+            @Override
+            public Class&lt;?&gt; getColumnClass(int columnIndex) {
+<span class="nc bnc" id="L390" title="All 2 branches missed.">                if (columnIndex == 4) {</span>
+<span class="nc" id="L391">                    return JProgressBar.class; // Column 5 is progress bar</span>
+                }
+<span class="nc" id="L393">                return super.getColumnClass(columnIndex);</span>
+            }
+        };
+
+        // Create table
+<span class="nc" id="L398">        budgetTable = new JTable(tableModel);</span>
+<span class="nc" id="L399">        budgetTable.setRowHeight(30);</span>
+<span class="nc" id="L400">        budgetTable.getColumnModel().getColumn(4).setCellRenderer(new ProgressBarRenderer());</span>
+        
+        // Set Actions column width
+<span class="nc" id="L403">        budgetTable.getColumnModel().getColumn(5).setPreferredWidth(120);</span>
+<span class="nc" id="L404">        budgetTable.getColumnModel().getColumn(5).setMinWidth(120);</span>
+        
+        // Set button renderer
+<span class="nc" id="L407">        budgetTable.getColumnModel().getColumn(5).setCellRenderer(new ButtonRenderer());</span>
+<span class="nc" id="L408">        budgetTable.addMouseListener(new java.awt.event.MouseAdapter() {</span>
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+<span class="nc" id="L411">                int column = budgetTable.getColumnModel().getColumnIndexAtX(e.getX());</span>
+<span class="nc" id="L412">                int row = e.getY() / budgetTable.getRowHeight();</span>
+                
+<span class="nc bnc" id="L414" title="All 6 branches missed.">                if (row &lt; budgetTable.getRowCount() &amp;&amp; row &gt;= 0 &amp;&amp; column == 5) {</span>
+<span class="nc" id="L415">                    JPanel panel = (JPanel)budgetTable.getValueAt(row, 5);</span>
+                    
+                    // 获取鼠标点击的位置
+<span class="nc" id="L418">                    Rectangle cellRect = budgetTable.getCellRect(row, column, false);</span>
+<span class="nc" id="L419">                    Point pointInCell = new Point(e.getX() - cellRect.x, e.getY() - cellRect.y);</span>
+                    
+                    // 确定点击了哪个按钮
+<span class="nc" id="L422">                    Component[] components = panel.getComponents();</span>
+<span class="nc bnc" id="L423" title="All 2 branches missed.">                    for (int i = 0; i &lt; components.length; i++) {</span>
+<span class="nc bnc" id="L424" title="All 2 branches missed.">                        if (components[i] instanceof JButton) {</span>
+<span class="nc" id="L425">                            JButton button = (JButton)components[i];</span>
+<span class="nc bnc" id="L426" title="All 2 branches missed.">                            if (button.getBounds().contains(pointInCell)) {</span>
+<span class="nc bnc" id="L427" title="All 2 branches missed.">                                if (button.getText().equals(&quot;Edit&quot;)) {</span>
+<span class="nc" id="L428">                                    editCategory(row);</span>
+<span class="nc bnc" id="L429" title="All 2 branches missed.">                                } else if (button.getText().equals(&quot;Delete&quot;)) {</span>
+<span class="nc" id="L430">                                    deleteCategory(row);</span>
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+<span class="nc" id="L437">            }</span>
+        });
+        
+        // Add table to scroll pane
+<span class="nc" id="L441">        JScrollPane scrollPane = new JScrollPane(budgetTable);</span>
+<span class="nc" id="L442">        tablePanel.add(scrollPane, BorderLayout.CENTER);</span>
+<span class="nc" id="L443">    }</span>
+
+    private void createSummaryPanel() {
+<span class="nc" id="L446">        summaryPanel = new JPanel(new GridLayout(1, 3, 20, 0));</span>
+<span class="nc" id="L447">        summaryPanel.setBorder(BorderFactory.createTitledBorder(&quot;Budget Summary&quot;));</span>
+
+        // Create summary cards
+<span class="nc" id="L450">        summaryPanel.add(createSummaryCard(&quot;Total Budget&quot;, &quot;¥0.00&quot;));</span>
+<span class="nc" id="L451">        summaryPanel.add(createSummaryCard(&quot;Total Spent&quot;, &quot;¥0.00&quot;));</span>
+<span class="nc" id="L452">        summaryPanel.add(createSummaryCard(&quot;Remaining Budget&quot;, &quot;¥0.00&quot;));</span>
+<span class="nc" id="L453">    }</span>
+
+    private JPanel createSummaryCard(String title, String value) {
+<span class="nc" id="L456">        JPanel card = new JPanel();</span>
+<span class="nc" id="L457">        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));</span>
+<span class="nc" id="L458">        card.setBackground(Color.WHITE);</span>
+<span class="nc" id="L459">        card.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));</span>
+
+<span class="nc" id="L461">        JLabel titleLabel = new JLabel(title);</span>
+<span class="nc" id="L462">        titleLabel.setForeground(new Color(102, 102, 102));</span>
+<span class="nc" id="L463">        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);</span>
+
+<span class="nc" id="L465">        JLabel valueLabel = new JLabel(value);</span>
+<span class="nc" id="L466">        valueLabel.setFont(valueLabel.getFont().deriveFont(20f));</span>
+<span class="nc" id="L467">        valueLabel.setForeground(new Color(74, 107, 255));</span>
+<span class="nc" id="L468">        valueLabel.setAlignmentX(Component.LEFT_ALIGNMENT);</span>
+
+<span class="nc" id="L470">        card.add(titleLabel);</span>
+<span class="nc" id="L471">        card.add(Box.createRigidArea(new Dimension(0, 10)));</span>
+<span class="nc" id="L472">        card.add(valueLabel);</span>
+
+<span class="nc" id="L474">        return card;</span>
+    }
+
+    private void clearForm() {
+<span class="nc" id="L478">        categoryField.setText(&quot;&quot;);</span>
+<span class="nc" id="L479">        amountField.setText(&quot;&quot;);</span>
+<span class="nc" id="L480">        existingCategoriesCombo.setSelectedIndex(0);</span>
+<span class="nc" id="L481">    }</span>
+
+    private void addBudgetCategory() {
+        try {
+<span class="nc" id="L485">            String category = categoryField.getText().trim();</span>
+<span class="nc bnc" id="L486" title="All 2 branches missed.">            if (category.isEmpty()) {</span>
+<span class="nc" id="L487">                JOptionPane.showMessageDialog(this, </span>
+                    &quot;Please enter a category name.&quot;, 
+                    &quot;Input Error&quot;, 
+                    JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L491">                return;</span>
+            }
+
+<span class="nc" id="L494">            BigDecimal amount = new BigDecimal(amountField.getText().trim());</span>
+<span class="nc bnc" id="L495" title="All 2 branches missed.">            if (amount.compareTo(BigDecimal.ZERO) &lt;= 0) {</span>
+<span class="nc" id="L496">                JOptionPane.showMessageDialog(this, </span>
+                    &quot;Please enter a valid amount greater than zero.&quot;, 
+                    &quot;Input Error&quot;, 
+                    JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L500">                return;</span>
+            }
+            
+            // Check if category already exists
+<span class="nc bnc" id="L504" title="All 2 branches missed.">            if (categoryBudgets.containsKey(category)) {</span>
+<span class="nc" id="L505">                int choice = JOptionPane.showConfirmDialog(this,</span>
+                    &quot;This category already exists. Do you want to update the budget amount?&quot;,
+                    &quot;Category Exists&quot;,
+                    JOptionPane.YES_NO_OPTION);
+                    
+<span class="nc bnc" id="L510" title="All 2 branches missed.">                if (choice != JOptionPane.YES_OPTION) {</span>
+<span class="nc" id="L511">                    return;</span>
+                }
+                
+                // Update existing category
+<span class="nc" id="L515">                updateExistingCategory(category, amount);</span>
+<span class="nc" id="L516">            } else {</span>
+                // Add new category
+<span class="nc" id="L518">                categoryBudgets.put(category, amount);</span>
+                
+                // Get spending for this category
+<span class="nc" id="L521">                BigDecimal spent = categorySpending.getOrDefault(category, BigDecimal.ZERO);</span>
+                
+                // Calculate remaining amount and progress percentage
+<span class="nc" id="L524">                BigDecimal remaining = amount.subtract(spent);</span>
+<span class="nc bnc" id="L525" title="All 2 branches missed.">                int percentage = (amount.compareTo(BigDecimal.ZERO) &gt; 0) ? </span>
+<span class="nc" id="L526">                    spent.multiply(new BigDecimal(100)).divide(amount, RoundingMode.HALF_UP).intValue() : 0;</span>
+                
+                // Add to table
+<span class="nc" id="L529">                Object[] rowData = {</span>
+                    category,
+<span class="nc" id="L531">                    &quot;¥&quot; + amount.toString(),</span>
+<span class="nc" id="L532">                    &quot;¥&quot; + spent.toString(),</span>
+<span class="nc" id="L533">                    &quot;¥&quot; + remaining.toString(),</span>
+<span class="nc" id="L534">                    createProgressBar(percentage),</span>
+<span class="nc" id="L535">                    createActionButtons()</span>
+                };
+<span class="nc" id="L537">                tableModel.addRow(rowData);</span>
+                
+                // Update category combo box
+<span class="nc" id="L540">                updateCategoryComboBox();</span>
+            }
+
+            // Update summary
+<span class="nc" id="L544">            updateSummary();</span>
+            
+            // Save budget data
+<span class="nc" id="L547">            saveBudgetData();</span>
+
+            // Clear form
+<span class="nc" id="L550">            clearForm();</span>
+
+            // Show success message
+<span class="nc" id="L553">            JOptionPane.showMessageDialog(this, </span>
+                &quot;Budget category added successfully!&quot;, 
+                &quot;Success&quot;, 
+                JOptionPane.INFORMATION_MESSAGE);
+
+<span class="nc" id="L558">        } catch (NumberFormatException e) {</span>
+<span class="nc" id="L559">            JOptionPane.showMessageDialog(this, </span>
+                &quot;Please enter a valid amount.&quot;, 
+                &quot;Input Error&quot;, 
+                JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L563">        }</span>
+<span class="nc" id="L564">    }</span>
+
+    private void updateCategoryComboBox() {
+<span class="nc" id="L567">        existingCategoriesCombo.removeAllItems();</span>
+<span class="nc" id="L568">        existingCategoriesCombo.addItem(&quot;-- Select Existing Category --&quot;);</span>
+        
+        // Add all transaction categories
+<span class="nc" id="L571">        Set&lt;String&gt; allCategories = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L572" title="All 2 branches missed.">        for (Transaction transaction : importService.getAllTransactions()) {</span>
+<span class="nc" id="L573">            allCategories.add(transaction.getCategory());</span>
+<span class="nc" id="L574">        }</span>
+        
+        // Add existing budget categories
+<span class="nc" id="L577">        allCategories.addAll(categoryBudgets.keySet());</span>
+        
+        // Add to combo box
+<span class="nc bnc" id="L580" title="All 2 branches missed.">        for (String category : allCategories) {</span>
+<span class="nc" id="L581">            existingCategoriesCombo.addItem(category);</span>
+<span class="nc" id="L582">        }</span>
+<span class="nc" id="L583">    }</span>
+
+    private void updateExistingCategory(String category, BigDecimal newAmount) {
+        // Update budget mapping
+<span class="nc" id="L587">        categoryBudgets.put(category, newAmount);</span>
+        
+        // Find the row in the table
+<span class="nc bnc" id="L590" title="All 2 branches missed.">        for (int i = 0; i &lt; tableModel.getRowCount(); i++) {</span>
+<span class="nc bnc" id="L591" title="All 2 branches missed.">            if (tableModel.getValueAt(i, 0).equals(category)) {</span>
+                // Get spending for this category
+<span class="nc" id="L593">                BigDecimal spent = categorySpending.getOrDefault(category, BigDecimal.ZERO);</span>
+                
+                // Calculate remaining amount and progress percentage
+<span class="nc" id="L596">                BigDecimal remaining = newAmount.subtract(spent);</span>
+<span class="nc bnc" id="L597" title="All 2 branches missed.">                int percentage = (newAmount.compareTo(BigDecimal.ZERO) &gt; 0) ? </span>
+<span class="nc" id="L598">                    spent.multiply(new BigDecimal(100)).divide(newAmount, RoundingMode.HALF_UP).intValue() : 0;</span>
+                
+                // Update table row
+<span class="nc" id="L601">                tableModel.setValueAt(&quot;¥&quot; + newAmount.toString(), i, 1);</span>
+<span class="nc" id="L602">                tableModel.setValueAt(&quot;¥&quot; + remaining.toString(), i, 3);</span>
+<span class="nc" id="L603">                tableModel.setValueAt(createProgressBar(percentage), i, 4);</span>
+                
+<span class="nc" id="L605">                break;</span>
+            }
+        }
+<span class="nc" id="L608">    }</span>
+
+    private String getStatus(BigDecimal spent, BigDecimal budget) {
+<span class="nc bnc" id="L611" title="All 2 branches missed.">        if (spent.compareTo(budget) &gt;= 0) {</span>
+<span class="nc" id="L612">            return &quot;Over Budget&quot;;</span>
+<span class="nc bnc" id="L613" title="All 2 branches missed.">        } else if (spent.multiply(new BigDecimal(0.8)).compareTo(budget) &gt;= 0) {</span>
+<span class="nc" id="L614">            return &quot;Warning&quot;;</span>
+        } else {
+<span class="nc" id="L616">            return &quot;Normal&quot;;</span>
+        }
+    }
+
+    private JLabel createStatusLabel(String status) {
+<span class="nc" id="L621">        JLabel label = new JLabel(status);</span>
+<span class="nc bnc" id="L622" title="All 4 branches missed.">        switch (status) {</span>
+            case &quot;Normal&quot;:
+<span class="nc" id="L624">                label.setForeground(new Color(40, 167, 69));</span>
+<span class="nc" id="L625">                break;</span>
+            case &quot;Warning&quot;:
+<span class="nc" id="L627">                label.setForeground(new Color(255, 193, 7));</span>
+<span class="nc" id="L628">                break;</span>
+            case &quot;Over Budget&quot;:
+<span class="nc" id="L630">                label.setForeground(new Color(220, 53, 69));</span>
+                break;
+        }
+<span class="nc" id="L633">        return label;</span>
+    }
+
+    private JProgressBar createProgressBar(int percentage) {
+<span class="nc" id="L637">        JProgressBar progressBar = new JProgressBar(0, 100);</span>
+<span class="nc" id="L638">        progressBar.setValue(percentage);</span>
+<span class="nc" id="L639">        progressBar.setStringPainted(true);</span>
+        
+<span class="nc bnc" id="L641" title="All 2 branches missed.">        if (percentage &lt; 70) {</span>
+<span class="nc" id="L642">            progressBar.setForeground(new Color(40, 167, 69));</span>
+<span class="nc bnc" id="L643" title="All 2 branches missed.">        } else if (percentage &lt; 90) {</span>
+<span class="nc" id="L644">            progressBar.setForeground(new Color(255, 193, 7));</span>
+        } else {
+<span class="nc" id="L646">            progressBar.setForeground(new Color(220, 53, 69));</span>
+        }
+        
+<span class="nc" id="L649">        return progressBar;</span>
+    }
+
+    private JPanel createActionButtons() {
+<span class="nc" id="L653">        JPanel panel = new JPanel(new GridLayout(1, 2, 2, 0));</span>
+<span class="nc" id="L654">        panel.setPreferredSize(new Dimension(120, 25));</span>
+        
+<span class="nc" id="L656">        JButton editButton = new JButton(&quot;Edit&quot;);</span>
+<span class="nc" id="L657">        JButton deleteButton = new JButton(&quot;Delete&quot;);</span>
+        
+        // Set smaller font and margins
+<span class="nc" id="L660">        Font smallFont = new Font(&quot;Dialog&quot;, Font.PLAIN, 12);</span>
+<span class="nc" id="L661">        editButton.setFont(smallFont);</span>
+<span class="nc" id="L662">        deleteButton.setFont(smallFont);</span>
+        
+<span class="nc" id="L664">        editButton.setMargin(new Insets(1, 2, 1, 2));</span>
+<span class="nc" id="L665">        deleteButton.setMargin(new Insets(1, 2, 1, 2));</span>
+        
+<span class="nc" id="L667">        editButton.setFocusPainted(false);</span>
+<span class="nc" id="L668">        deleteButton.setFocusPainted(false);</span>
+        
+<span class="nc" id="L670">        panel.add(editButton);</span>
+<span class="nc" id="L671">        panel.add(deleteButton);</span>
+        
+<span class="nc" id="L673">        return panel;</span>
+    }
+
+    private void editCategory(int row) {
+<span class="nc" id="L677">        String category = (String) tableModel.getValueAt(row, 0);</span>
+<span class="nc" id="L678">        String budgetAmount = ((String) tableModel.getValueAt(row, 1)).substring(1); // Remove ¥ symbol</span>
+        
+        // Create form panel with vertical layout
+<span class="nc" id="L681">        JPanel panel = new JPanel();</span>
+<span class="nc" id="L682">        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));</span>
+<span class="nc" id="L683">        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));</span>
+        
+<span class="nc" id="L685">        JTextField editCategoryField = new JTextField(category);</span>
+<span class="nc" id="L686">        JTextField editAmountField = new JTextField(budgetAmount);</span>
+        
+        // Category name panel
+<span class="nc" id="L689">        JPanel categoryNamePanel = new JPanel(new BorderLayout(5, 5));</span>
+<span class="nc" id="L690">        categoryNamePanel.add(new JLabel(&quot;Category Name:&quot;), BorderLayout.NORTH);</span>
+<span class="nc" id="L691">        categoryNamePanel.add(editCategoryField, BorderLayout.CENTER);</span>
+        
+        // Budget amount panel
+<span class="nc" id="L694">        JPanel amountPanel = new JPanel(new BorderLayout(5, 5));</span>
+<span class="nc" id="L695">        amountPanel.add(new JLabel(&quot;Budget Amount:&quot;), BorderLayout.NORTH);</span>
+<span class="nc" id="L696">        amountPanel.add(editAmountField, BorderLayout.CENTER);</span>
+        
+        // Add spacing between components
+<span class="nc" id="L699">        categoryNamePanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));</span>
+        
+<span class="nc" id="L701">        panel.add(categoryNamePanel);</span>
+<span class="nc" id="L702">        panel.add(amountPanel);</span>
+        
+<span class="nc" id="L704">        int result = JOptionPane.showConfirmDialog(this, </span>
+            panel, 
+            &quot;Edit Budget Category&quot;, 
+            JOptionPane.OK_CANCEL_OPTION);
+            
+<span class="nc bnc" id="L709" title="All 2 branches missed.">        if (result == JOptionPane.OK_OPTION) {</span>
+            try {
+<span class="nc" id="L711">                String newCategory = editCategoryField.getText().trim();</span>
+<span class="nc" id="L712">                BigDecimal newAmount = new BigDecimal(editAmountField.getText().trim());</span>
+                
+<span class="nc bnc" id="L714" title="All 2 branches missed.">                if (newCategory.isEmpty()) {</span>
+<span class="nc" id="L715">                    JOptionPane.showMessageDialog(this, </span>
+                        &quot;Please enter a category name.&quot;, 
+                        &quot;Input Error&quot;, 
+                        JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L719">                    return;</span>
+                }
+                
+<span class="nc bnc" id="L722" title="All 2 branches missed.">                if (newAmount.compareTo(BigDecimal.ZERO) &lt;= 0) {</span>
+<span class="nc" id="L723">                    JOptionPane.showMessageDialog(this, </span>
+                        &quot;Please enter a valid amount greater than zero.&quot;, 
+                        &quot;Input Error&quot;, 
+                        JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L727">                    return;</span>
+                }
+                
+                // If category name has changed
+<span class="nc bnc" id="L731" title="All 2 branches missed.">                if (!newCategory.equals(category)) {</span>
+                    // Check if new name already exists
+<span class="nc bnc" id="L733" title="All 4 branches missed.">                    if (categoryBudgets.containsKey(newCategory) &amp;&amp; !newCategory.equals(category)) {</span>
+<span class="nc" id="L734">                        JOptionPane.showMessageDialog(this, </span>
+                            &quot;Category name already exists. Please use a different name.&quot;, 
+                            &quot;Input Error&quot;, 
+                            JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L738">                        return;</span>
+                    }
+                    
+                    // Update mappings
+<span class="nc" id="L742">                    categoryBudgets.remove(category);</span>
+<span class="nc" id="L743">                    categoryBudgets.put(newCategory, newAmount);</span>
+                    
+                    // Update table
+<span class="nc" id="L746">                    tableModel.setValueAt(newCategory, row, 0);</span>
+                } else {
+                    // Just update the amount
+<span class="nc" id="L749">                    categoryBudgets.put(category, newAmount);</span>
+                }
+                
+                // Get spending for this category
+<span class="nc" id="L753">                BigDecimal spent = categorySpending.getOrDefault(newCategory, BigDecimal.ZERO);</span>
+                
+                // Calculate remaining amount and progress percentage
+<span class="nc" id="L756">                BigDecimal remaining = newAmount.subtract(spent);</span>
+<span class="nc bnc" id="L757" title="All 2 branches missed.">                int percentage = (newAmount.compareTo(BigDecimal.ZERO) &gt; 0) ? </span>
+<span class="nc" id="L758">                    spent.multiply(new BigDecimal(100)).divide(newAmount, RoundingMode.HALF_UP).intValue() : 0;</span>
+                
+                // Update table row
+<span class="nc" id="L761">                tableModel.setValueAt(&quot;¥&quot; + newAmount.toString(), row, 1);</span>
+<span class="nc" id="L762">                tableModel.setValueAt(&quot;¥&quot; + remaining.toString(), row, 3);</span>
+<span class="nc" id="L763">                tableModel.setValueAt(createProgressBar(percentage), row, 4);</span>
+                
+                // Update summary
+<span class="nc" id="L766">                updateSummary();</span>
+                
+                // Save budget data
+<span class="nc" id="L769">                saveBudgetData();</span>
+                
+                // Update category combo box
+<span class="nc" id="L772">                updateCategoryComboBox();</span>
+                
+<span class="nc" id="L774">            } catch (NumberFormatException e) {</span>
+<span class="nc" id="L775">                JOptionPane.showMessageDialog(this, </span>
+                    &quot;Please enter a valid amount.&quot;, 
+                    &quot;Input Error&quot;, 
+                    JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L779">            }</span>
+        }
+<span class="nc" id="L781">    }</span>
+
+    private void deleteCategory(int row) {
+<span class="nc" id="L784">        String category = (String) tableModel.getValueAt(row, 0);</span>
+        
+<span class="nc" id="L786">        int result = JOptionPane.showConfirmDialog(this,</span>
+            &quot;Are you sure you want to delete the category '&quot; + category + &quot;'?&quot;,
+            &quot;Confirm Deletion&quot;,
+            JOptionPane.YES_NO_OPTION);
+            
+<span class="nc bnc" id="L791" title="All 2 branches missed.">        if (result == JOptionPane.YES_OPTION) {</span>
+            // Remove from mappings
+<span class="nc" id="L793">            categoryBudgets.remove(category);</span>
+            
+            // Remove from table
+<span class="nc" id="L796">            tableModel.removeRow(row);</span>
+            
+            // Update summary
+<span class="nc" id="L799">            updateSummary();</span>
+            
+            // Save budget data
+<span class="nc" id="L802">            saveBudgetData();</span>
+            
+            // Update category combo box
+<span class="nc" id="L805">            updateCategoryComboBox();</span>
+        }
+<span class="nc" id="L807">    }</span>
+
+    private void assignTransactions(int row) {
+<span class="nc" id="L810">        String category = (String) tableModel.getValueAt(row, 0);</span>
+        
+        // Get unassigned transactions
+<span class="nc" id="L813">        List&lt;Transaction&gt; unassignedTransactions = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L814" title="All 2 branches missed.">        for (Transaction transaction : importService.getAllTransactions()) {</span>
+<span class="nc bnc" id="L815" title="All 2 branches missed.">            if (transaction.getType() == TransactionType.EXPENSE &amp;&amp; </span>
+<span class="nc bnc" id="L816" title="All 4 branches missed.">                (transaction.getCategory() == null || transaction.getCategory().trim().isEmpty() || </span>
+<span class="nc bnc" id="L817" title="All 2 branches missed.">                 transaction.getCategory().equals(&quot;Other&quot;))) {</span>
+<span class="nc" id="L818">                unassignedTransactions.add(transaction);</span>
+            }
+<span class="nc" id="L820">        }</span>
+        
+<span class="nc bnc" id="L822" title="All 2 branches missed.">        if (unassignedTransactions.isEmpty()) {</span>
+<span class="nc" id="L823">            JOptionPane.showMessageDialog(this,</span>
+                &quot;No unassigned transactions found.&quot;,
+                &quot;Information&quot;,
+                JOptionPane.INFORMATION_MESSAGE);
+<span class="nc" id="L827">            return;</span>
+        }
+        
+        // Create transaction selection panel
+<span class="nc" id="L831">        JPanel panel = new JPanel(new BorderLayout());</span>
+<span class="nc" id="L832">        panel.setPreferredSize(new Dimension(600, 400));</span>
+        
+<span class="nc" id="L834">        DefaultListModel&lt;String&gt; listModel = new DefaultListModel&lt;&gt;();</span>
+<span class="nc bnc" id="L835" title="All 2 branches missed.">        for (Transaction t : unassignedTransactions) {</span>
+<span class="nc" id="L836">            listModel.addElement(t.getDateTime().toLocalDate() + &quot; - &quot; + t.getDescription() + &quot; - ¥&quot; + t.getAmount());</span>
+<span class="nc" id="L837">        }</span>
+        
+<span class="nc" id="L839">        JList&lt;String&gt; transactionList = new JList&lt;&gt;(listModel);</span>
+<span class="nc" id="L840">        transactionList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);</span>
+        
+<span class="nc" id="L842">        JScrollPane scrollPane = new JScrollPane(transactionList);</span>
+<span class="nc" id="L843">        panel.add(new JLabel(&quot;Select transactions to assign to category '&quot; + category + &quot;':&quot;), BorderLayout.NORTH);</span>
+<span class="nc" id="L844">        panel.add(scrollPane, BorderLayout.CENTER);</span>
+        
+<span class="nc" id="L846">        int result = JOptionPane.showConfirmDialog(this,</span>
+            panel,
+            &quot;Assign Transactions to Category&quot;,
+            JOptionPane.OK_CANCEL_OPTION,
+            JOptionPane.PLAIN_MESSAGE);
+            
+<span class="nc bnc" id="L852" title="All 2 branches missed.">        if (result == JOptionPane.OK_OPTION) {</span>
+<span class="nc" id="L853">            int[] selectedIndices = transactionList.getSelectedIndices();</span>
+            
+<span class="nc bnc" id="L855" title="All 2 branches missed.">            if (selectedIndices.length == 0) {</span>
+<span class="nc" id="L856">                JOptionPane.showMessageDialog(this,</span>
+                    &quot;Please select at least one transaction.&quot;,
+                    &quot;Information&quot;,
+                    JOptionPane.INFORMATION_MESSAGE);
+<span class="nc" id="L860">                return;</span>
+            }
+            
+            // Update selected transactions' categories
+<span class="nc bnc" id="L864" title="All 2 branches missed.">            for (int index : selectedIndices) {</span>
+<span class="nc" id="L865">                Transaction transaction = unassignedTransactions.get(index);</span>
+                
+                // Since Transaction is immutable, we need to create a new object
+<span class="nc" id="L868">                Transaction updatedTransaction = new Transaction(</span>
+<span class="nc" id="L869">                    transaction.getId(),</span>
+<span class="nc" id="L870">                    transaction.getAmount(),</span>
+                    category, // Update category
+<span class="nc" id="L872">                    transaction.getDescription(),</span>
+<span class="nc" id="L873">                    transaction.getDateTime(),</span>
+<span class="nc" id="L874">                    transaction.getType(),</span>
+<span class="nc" id="L875">                    transaction.getPaymentMethod(),</span>
+<span class="nc" id="L876">                    transaction.getCurrency()</span>
+                );
+                
+                // Add to ImportService
+<span class="nc" id="L880">                importService.addTransaction(updatedTransaction);</span>
+            }
+            
+            // Reload data to reflect changes
+<span class="nc" id="L884">            loadTransactionData();</span>
+            
+<span class="nc" id="L886">            JOptionPane.showMessageDialog(this,</span>
+                &quot;Successfully assigned &quot; + selectedIndices.length + &quot; transactions to category '&quot; + category + &quot;'.&quot;,
+                &quot;Success&quot;,
+                JOptionPane.INFORMATION_MESSAGE);
+        }
+<span class="nc" id="L891">    }</span>
+
+    private void updateBudgetTable() {
+<span class="nc" id="L894">        tableModel.setRowCount(0);</span>
+        
+<span class="nc bnc" id="L896" title="All 2 branches missed.">        for (Map.Entry&lt;String, BigDecimal&gt; entry : categoryBudgets.entrySet()) {</span>
+<span class="nc" id="L897">            String category = entry.getKey();</span>
+<span class="nc" id="L898">            BigDecimal budget = entry.getValue();</span>
+            
+            // Get spending for this category
+<span class="nc" id="L901">            BigDecimal spent = categorySpending.getOrDefault(category, BigDecimal.ZERO);</span>
+            
+            // Calculate remaining amount and progress percentage
+<span class="nc" id="L904">            BigDecimal remaining = budget.subtract(spent);</span>
+<span class="nc bnc" id="L905" title="All 2 branches missed.">            int percentage = (budget.compareTo(BigDecimal.ZERO) &gt; 0) ? </span>
+<span class="nc" id="L906">                spent.multiply(new BigDecimal(100)).divide(budget, RoundingMode.HALF_UP).intValue() : 0;</span>
+            
+            // Determine status
+<span class="nc" id="L909">            String status = getStatus(spent, budget);</span>
+            
+            // Add to table
+<span class="nc" id="L912">            Object[] rowData = {</span>
+                category,
+<span class="nc" id="L914">                &quot;¥&quot; + budget.toString(),</span>
+<span class="nc" id="L915">                &quot;¥&quot; + spent.toString(),</span>
+<span class="nc" id="L916">                &quot;¥&quot; + remaining.toString(),</span>
+<span class="nc" id="L917">                createProgressBar(percentage),</span>
+<span class="nc" id="L918">                createActionButtons()</span>
+            };
+<span class="nc" id="L920">            tableModel.addRow(rowData);</span>
+<span class="nc" id="L921">        }</span>
+<span class="nc" id="L922">    }</span>
+
+    private void updateSummary() {
+        // Calculate total budget and spent amount
+<span class="nc" id="L926">        BigDecimal categoryBudgetTotal = BigDecimal.ZERO;</span>
+<span class="nc bnc" id="L927" title="All 2 branches missed.">        for (BigDecimal budget : categoryBudgets.values()) {</span>
+<span class="nc" id="L928">            categoryBudgetTotal = categoryBudgetTotal.add(budget);</span>
+<span class="nc" id="L929">        }</span>
+        
+        // If total budget is not set, use category budget total
+<span class="nc bnc" id="L932" title="All 2 branches missed.">        if (totalBudget.compareTo(BigDecimal.ZERO) == 0) {</span>
+<span class="nc" id="L933">            totalBudget = categoryBudgetTotal;</span>
+        }
+        
+        // Calculate remaining budget
+<span class="nc" id="L937">        BigDecimal remainingBudget = totalBudget.subtract(totalSpent);</span>
+<span class="nc bnc" id="L938" title="All 2 branches missed.">        if (remainingBudget.compareTo(BigDecimal.ZERO) &lt; 0) {</span>
+<span class="nc" id="L939">            remainingBudget = BigDecimal.ZERO;</span>
+        }
+        
+        // Update summary cards
+<span class="nc bnc" id="L943" title="All 2 branches missed.">        for (Component component : summaryPanel.getComponents()) {</span>
+<span class="nc bnc" id="L944" title="All 2 branches missed.">            if (component instanceof JPanel) {</span>
+<span class="nc" id="L945">                JPanel card = (JPanel) component;</span>
+<span class="nc" id="L946">                JLabel valueLabel = (JLabel) card.getComponent(2);</span>
+<span class="nc" id="L947">                JLabel titleLabel = (JLabel) card.getComponent(0);</span>
+                
+<span class="nc bnc" id="L949" title="All 4 branches missed.">                switch (titleLabel.getText()) {</span>
+                    case &quot;Total Budget&quot;:
+<span class="nc" id="L951">                        valueLabel.setText(&quot;¥&quot; + totalBudget.setScale(2, RoundingMode.HALF_UP).toString());</span>
+<span class="nc" id="L952">                        break;</span>
+                    case &quot;Total Spent&quot;:
+<span class="nc" id="L954">                        valueLabel.setText(&quot;¥&quot; + totalSpent.setScale(2, RoundingMode.HALF_UP).toString());</span>
+<span class="nc" id="L955">                        break;</span>
+                    case &quot;Remaining Budget&quot;:
+<span class="nc" id="L957">                        valueLabel.setText(&quot;¥&quot; + remainingBudget.setScale(2, RoundingMode.HALF_UP).toString());</span>
+                        break;
+                }
+            }
+        }
+<span class="nc" id="L962">    }</span>
+
+    // Custom progress bar renderer
+    class ProgressBarRenderer extends JProgressBar implements TableCellRenderer {
+<span class="nc" id="L966">        public ProgressBarRenderer() {</span>
+<span class="nc" id="L967">            super(0, 100);</span>
+<span class="nc" id="L968">            setStringPainted(true);</span>
+<span class="nc" id="L969">        }</span>
+        
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                boolean hasFocus, int row, int column) {
+<span class="nc bnc" id="L974" title="All 2 branches missed.">            if (value instanceof JProgressBar) {</span>
+<span class="nc" id="L975">                JProgressBar pb = (JProgressBar) value;</span>
+<span class="nc" id="L976">                setValue(pb.getValue());</span>
+<span class="nc" id="L977">                setForeground(pb.getForeground());</span>
+<span class="nc" id="L978">            } else {</span>
+<span class="nc" id="L979">                setValue(0);</span>
+            }
+<span class="nc" id="L981">            return this;</span>
+        }
+    }
+    
+    // Custom button renderer
+<span class="nc" id="L986">    class ButtonRenderer implements TableCellRenderer {</span>
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                boolean hasFocus, int row, int column) {
+<span class="nc" id="L990">            return (Component) value;</span>
+        }
+    }
+
+    // Add methods to save/load budget data
+    private void saveBudgetData() {
+        try {
+            // Create data directory if it doesn't exist
+<span class="nc" id="L998">            File dataDir = new File(&quot;data&quot;);</span>
+<span class="nc bnc" id="L999" title="All 2 branches missed.">            if (!dataDir.exists()) {</span>
+<span class="nc" id="L1000">                dataDir.mkdirs();</span>
+            }
+            
+            // Create budget data file
+<span class="nc" id="L1004">            File budgetFile = new File(&quot;data/budget.csv&quot;);</span>
+            
+<span class="nc" id="L1006">            try (FileWriter writer = new FileWriter(budgetFile);</span>
+<span class="nc" id="L1007">                 CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT</span>
+<span class="nc" id="L1008">                     .withHeader(&quot;TotalBudget&quot;, &quot;StartDate&quot;, &quot;EndDate&quot;, &quot;Category&quot;, &quot;Amount&quot;))) {</span>
+                
+                // Save total budget info
+<span class="nc" id="L1011">                csvPrinter.printRecord(</span>
+<span class="nc" id="L1012">                    totalBudget.toString(),</span>
+<span class="nc" id="L1013">                    budgetStartDate.toString(),</span>
+<span class="nc" id="L1014">                    budgetEndDate.toString(),</span>
+                    &quot;&quot;, // Empty category for total budget row
+                    &quot;&quot;  // Empty amount for total budget row
+                );
+                
+                // Save category budgets
+<span class="nc bnc" id="L1020" title="All 2 branches missed.">                for (Map.Entry&lt;String, BigDecimal&gt; entry : categoryBudgets.entrySet()) {</span>
+<span class="nc" id="L1021">                    csvPrinter.printRecord(</span>
+                        &quot;&quot;, // Empty total budget for category rows
+                        &quot;&quot;, // Empty start date for category rows
+                        &quot;&quot;, // Empty end date for category rows
+<span class="nc" id="L1025">                        entry.getKey(),</span>
+<span class="nc" id="L1026">                        entry.getValue().toString()</span>
+                    );
+<span class="nc" id="L1028">                }</span>
+                
+<span class="nc" id="L1030">                csvPrinter.flush();</span>
+<span class="nc" id="L1031">                logger.info(&quot;Budget data saved successfully&quot;);</span>
+            }
+            
+            // Update Dashboard service with the budget
+<span class="nc" id="L1035">            dashboardService.updateTotalBudget(totalBudget, budgetStartDate, budgetEndDate);</span>
+            
+<span class="nc" id="L1037">        } catch (IOException e) {</span>
+<span class="nc" id="L1038">            logger.error(&quot;Failed to save budget data: {}&quot;, e.getMessage(), e);</span>
+<span class="nc" id="L1039">            JOptionPane.showMessageDialog(this,</span>
+<span class="nc" id="L1040">                &quot;Error saving budget data: &quot; + e.getMessage(),</span>
+                &quot;Error&quot;,
+                JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L1043">        }</span>
+<span class="nc" id="L1044">    }</span>
+    
+    private void loadBudgetData() {
+        try {
+<span class="nc" id="L1048">            File budgetFile = new File(&quot;data/budget.csv&quot;);</span>
+<span class="nc bnc" id="L1049" title="All 2 branches missed.">            if (!budgetFile.exists()) {</span>
+<span class="nc" id="L1050">                logger.info(&quot;No budget data file found. Starting with empty budget.&quot;);</span>
+<span class="nc" id="L1051">                return;</span>
+            }
+            
+<span class="nc" id="L1054">            try (FileReader reader = new FileReader(budgetFile);</span>
+<span class="nc" id="L1055">                 CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT</span>
+<span class="nc" id="L1056">                     .withFirstRecordAsHeader()</span>
+<span class="nc" id="L1057">                     .withIgnoreHeaderCase()</span>
+<span class="nc" id="L1058">                     .withTrim())) {</span>
+                
+<span class="nc" id="L1060">                boolean firstRow = true;</span>
+                
+<span class="nc bnc" id="L1062" title="All 2 branches missed.">                for (CSVRecord record : csvParser) {</span>
+<span class="nc bnc" id="L1063" title="All 2 branches missed.">                    if (firstRow) {</span>
+                        // First row contains total budget info
+<span class="nc" id="L1065">                        String totalBudgetStr = record.get(&quot;TotalBudget&quot;);</span>
+<span class="nc" id="L1066">                        String startDateStr = record.get(&quot;StartDate&quot;);</span>
+<span class="nc" id="L1067">                        String endDateStr = record.get(&quot;EndDate&quot;);</span>
+                        
+<span class="nc bnc" id="L1069" title="All 2 branches missed.">                        if (!totalBudgetStr.isEmpty()) {</span>
+<span class="nc" id="L1070">                            totalBudget = new BigDecimal(totalBudgetStr);</span>
+                        }
+                        
+<span class="nc bnc" id="L1073" title="All 4 branches missed.">                        if (!startDateStr.isEmpty() &amp;&amp; !endDateStr.isEmpty()) {</span>
+<span class="nc" id="L1074">                            budgetStartDate = LocalDate.parse(startDateStr);</span>
+<span class="nc" id="L1075">                            budgetEndDate = LocalDate.parse(endDateStr);</span>
+                            
+                            // Update date choosers
+<span class="nc" id="L1078">                            startDateChooser.setDate(Date.from(budgetStartDate.atStartOfDay(ZoneId.systemDefault()).toInstant()));</span>
+<span class="nc" id="L1079">                            endDateChooser.setDate(Date.from(budgetEndDate.atStartOfDay(ZoneId.systemDefault()).toInstant()));</span>
+                        }
+                        
+<span class="nc" id="L1082">                        firstRow = false;</span>
+<span class="nc" id="L1083">                    } else {</span>
+                        // Other rows contain category budgets
+<span class="nc" id="L1085">                        String category = record.get(&quot;Category&quot;);</span>
+<span class="nc" id="L1086">                        String amountStr = record.get(&quot;Amount&quot;);</span>
+                        
+<span class="nc bnc" id="L1088" title="All 4 branches missed.">                        if (!category.isEmpty() &amp;&amp; !amountStr.isEmpty()) {</span>
+<span class="nc" id="L1089">                            BigDecimal amount = new BigDecimal(amountStr);</span>
+<span class="nc" id="L1090">                            categoryBudgets.put(category, amount);</span>
+                        }
+                    }
+<span class="nc" id="L1093">                }</span>
+                
+                // Update UI with loaded data
+<span class="nc" id="L1096">                updateBudgetTable();</span>
+<span class="nc" id="L1097">                updateSummary();</span>
+                
+                // Update Dashboard service with the budget
+<span class="nc" id="L1100">                dashboardService.updateTotalBudget(totalBudget, budgetStartDate, budgetEndDate);</span>
+                
+<span class="nc" id="L1102">                logger.info(&quot;Budget data loaded successfully&quot;);</span>
+            }
+            
+<span class="nc" id="L1105">        } catch (Exception e) {</span>
+<span class="nc" id="L1106">            logger.error(&quot;Failed to load budget data: {}&quot;, e.getMessage(), e);</span>
+<span class="nc" id="L1107">            JOptionPane.showMessageDialog(this,</span>
+<span class="nc" id="L1108">                &quot;Error loading budget data: &quot; + e.getMessage(),</span>
+                &quot;Error&quot;,
+                JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L1111">        }</span>
+<span class="nc" id="L1112">    }</span>
+} 
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

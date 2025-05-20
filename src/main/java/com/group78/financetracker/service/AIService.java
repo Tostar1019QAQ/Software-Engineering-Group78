@@ -1,12 +1,14 @@
 package com.group78.financetracker.service;
 
 import com.group78.financetracker.model.Transaction;
+import com.group78.financetracker.model.TransactionType;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -78,82 +80,24 @@ public class AIService {
             }
         }
         
-        // If keyword matching fails, try using DeepSeek API for categorization
-        try {
-            return categorizeWithDeepSeek(description);
-        } catch (Exception e) {
-            logger.error("DeepSeek API categorization failed: {}", e.getMessage());
+        // If keyword matching fails, use simple heuristic matching instead of calling API
+        if (lowerDesc.contains("gas") || lowerDesc.contains("uber") || lowerDesc.contains("bus") || lowerDesc.contains("train")) {
+            return "Transport";
+        } else if (lowerDesc.contains("grocery") || lowerDesc.contains("restaurant") || lowerDesc.contains("cafe")) {
+            return "Food";
+        } else if (lowerDesc.contains("rent") || lowerDesc.contains("mortgage")) {
+            return "Housing";
+        } else if (lowerDesc.contains("movie") || lowerDesc.contains("game") || lowerDesc.contains("netflix")) {
+            return "Entertainment";
+        } else if (lowerDesc.contains("doctor") || lowerDesc.contains("hospital") || lowerDesc.contains("medicine")) {
+            return "Healthcare";
+        } else if (lowerDesc.contains("school") || lowerDesc.contains("book") || lowerDesc.contains("course")) {
+            return "Education";
+        } else {
             return "Others"; // Default category
         }
     }
     
-    /**
-     * Uses DeepSeek API to categorize a transaction
-     */
-    private String categorizeWithDeepSeek(String description) throws IOException, InterruptedException {
-        // If API key is not set, return default category
-        if (DEEPSEEK_API_KEY == null || DEEPSEEK_API_KEY.isEmpty()) {
-            logger.warn("DeepSeek API key not configured");
-            return "Others";
-        }
-        
-        // Build request body
-        ObjectNode requestBody = objectMapper.createObjectNode();
-        requestBody.put("model", DEEPSEEK_MODEL);
-        
-        ArrayNode messagesArray = requestBody.putArray("messages");
-        ObjectNode systemMessage = messagesArray.addObject();
-        systemMessage.put("role", "system");
-        systemMessage.put("content", "You are a financial transaction categorizer. " +
-                "Categorize the given transaction description into one of these categories: " +
-                String.join(", ", PREDEFINED_CATEGORIES) + ". " +
-                "Reply with only the category name, nothing else.");
-        
-        ObjectNode userMessage = messagesArray.addObject();
-        userMessage.put("role", "user");
-        userMessage.put("content", "Transaction description: " + description);
-        
-        // Set temperature for more deterministic output
-        requestBody.put("temperature", 0.1);
-        
-        // Build HTTP request
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(DEEPSEEK_API_URL))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + DEEPSEEK_API_KEY)
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
-                .build();
-        
-        // Send request and parse response
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        
-        if (response.statusCode() != 200) {
-            logger.error("DeepSeek API error: {} {}", response.statusCode(), response.body());
-            return "Others";
-        }
-        
-        // Parse response to get category
-        try {
-            Map<String, Object> responseMap = objectMapper.readValue(response.body(), Map.class);
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) responseMap.get("choices");
-            Map<String, Object> choice = choices.get(0);
-            Map<String, Object> message = (Map<String, Object>) choice.get("message");
-            String content = (String) message.get("content");
-            
-            // Clean and validate category
-            String category = content.trim();
-            if (PREDEFINED_CATEGORIES.contains(category)) {
-                return category;
-            } else {
-                logger.warn("DeepSeek returned invalid category: {}", category);
-                return "Others";
-            }
-        } catch (Exception e) {
-            logger.error("Failed to parse DeepSeek API response: {}", e.getMessage());
-            return "Others";
-        }
-    }
-
     /**
      * Analyzes spending patterns
      */
@@ -203,145 +147,53 @@ public class AIService {
     }
 
     /**
-     * Generates personalized financial analysis and advice using DeepSeek
+     * Generates personalized financial insights
      */
     public String generateFinancialInsights(List<Transaction> transactions) {
-        // Create generic prompt
-        String prompt = "Please analyze the user's transaction data and provide personalized financial advice. " +
-                       "Offer insights regarding spending patterns, budget management, and savings opportunities.";
+        if (transactions.isEmpty()) {
+            return "Not enough transaction data for analysis.";
+        }
         
-        return generateFinancialInsights(transactions, prompt);
+        // Use basic analysis instead of DeepSeek API call
+        Map<String, Object> analysis = analyzeSpendingPattern(transactions);
+        List<String> suggestions = generateBasicSavingsSuggestions(analysis);
+        
+        StringBuilder insights = new StringBuilder();
+        insights.append("Financial Analysis Report:\n\n");
+        
+        // Add basic financial metrics
+        BigDecimal totalSpent = (BigDecimal) analysis.get("totalSpent");
+        BigDecimal dailyAverage = (BigDecimal) analysis.get("dailyAverage");
+        String topCategory = (String) analysis.get("topCategory");
+        
+        insights.append("Your highest spending is in the ").append(topCategory).append(" category.\n");
+        insights.append("Your average daily spending is $").append(dailyAverage.setScale(2, RoundingMode.HALF_UP)).append(".\n\n");
+        
+        // Add recommendations
+        insights.append("Recommendations:\n");
+        for (String suggestion : suggestions) {
+            insights.append("- ").append(suggestion).append("\n");
+        }
+        
+        return insights.toString();
     }
     
     /**
-     * Generates personalized financial analysis and advice using DeepSeek (with custom prompt)
-     * @param transactions list of transactions
-     * @param customPrompt custom prompt/question
-     * @return generated financial analysis and advice
+     * Generate financial insights from a custom prompt
      */
-    public String generateFinancialInsights(List<Transaction> transactions, String customPrompt) {
-        try {
-            if (transactions.isEmpty()) {
-                return "Not enough transaction data for analysis.";
-            }
-            
-            // Prepare transaction data summary
-            Map<String, Object> analysis = analyzeSpendingPattern(transactions);
-            
-            String transactionSummary = String.format(
-                "User has %d transactions, with total spending of %s. The highest spending category is %s, with a daily average of %s.",
-                transactions.size(),
-                analysis.get("totalSpent"),
-                analysis.get("topCategory"),
-                analysis.get("dailyAverage")
-            );
-            
-            // Build final prompt
-            String finalPrompt = customPrompt + "\n\n" + transactionSummary + 
-                               "\n\nPlease provide detailed analysis and practical recommendations. Answer in English with clear organization.";
-            
-            // Try using DeepSeek API
-            try {
-                return callDeepSeekForInsights(finalPrompt);
-            } catch (Exception e) {
-                logger.warn("DeepSeek API call failed, falling back to basic analysis: {}", e.getMessage());
-                // If DeepSeek API call fails, fall back to basic analysis
-                List<String> suggestions = generateBasicSavingsSuggestions(analysis);
-                return String.join("\n\n", suggestions);
-            }
-        } catch (Exception e) {
-            logger.error("Error generating financial insights: {}", e.getMessage());
-            return "Error generating financial analysis: " + e.getMessage();
-        }
-    }
-    
-    /**
-     * Calls DeepSeek API for financial insights based on a user message
-     * 
-     * @param userMessage The user's message
-     * @return AI-generated response
-     * @throws IOException If an error occurs during API call
-     * @throws InterruptedException If the API call is interrupted
-     */
-    private String callDeepSeekForInsights(String userMessage) throws IOException, InterruptedException {
-        String systemPrompt = "You are a professional financial analyst and advisor. Only answer questions related to finance, investments, budgeting, savings, and other financial topics. " +
-                "If a user asks about non-financial topics, politely remind them that you can only answer finance-related questions. " +
-                "Provide useful and accurate financial advice using clear and understandable language. Always base your analysis on the data provided by the user. " +
-                "If questions involve budget data, refer to the information in budget.csv file. If questions involve bill data, refer to the information in bills.csv file.";
-
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", "deepseek-chat");
+    public String generateFinancialInsights(String customPrompt) {
+        // Provide fixed financial insights instead of calling API
+        StringBuilder insights = new StringBuilder();
         
-        List<Map<String, String>> messages = new ArrayList<>();
-        messages.add(Map.of("role", "system", "content", systemPrompt));
-        messages.add(Map.of("role", "user", "content", userMessage));
+        insights.append("Financial Analysis:\n\n");
+        insights.append("Based on your financial data, we recommend considering the following improvements:\n");
+        insights.append("1. Create an emergency fund: Build a reserve equivalent to 3-6 months of daily expenses.\n");
+        insights.append("2. Create a detailed budget: Track monthly spending to identify areas for reduction.\n");
+        insights.append("3. Optimize spending structure: Try to allocate at least 20% of income to savings and investments.\n");
+        insights.append("4. Review fixed expenses: Regularly check subscription services and bills, cancel unnecessary expenses.\n");
+        insights.append("5. Set up automatic savings: Automatically transfer a portion of funds to a savings account on each payday.\n");
         
-        requestBody.put("messages", messages);
-        requestBody.put("temperature", 0.3); // Lower temperature for more deterministic answers
-        requestBody.put("max_tokens", 1000); // Increase max tokens for more complete answers
-        
-        String requestBodyJson = new ObjectMapper().writeValueAsString(requestBody);
-        
-        // Implement retry logic
-        int maxRetries = 2;
-        int retryCount = 0;
-        HttpResponse<String> response = null;
-        
-        while (retryCount <= maxRetries) {
-            try {
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(DEEPSEEK_API_URL))
-                        .header("Content-Type", "application/json")
-                        .header("Authorization", "Bearer " + DEEPSEEK_API_KEY)
-                        .POST(HttpRequest.BodyPublishers.ofString(requestBodyJson))
-                        .timeout(Duration.ofSeconds(30)) // Set 30 second timeout
-                        .build();
-        
-                response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                
-                if (response.statusCode() == 200) {
-                    break; // If successful, exit retry loop
-                } else if (response.statusCode() == 429 || response.statusCode() == 500) {
-                    // If rate limited or server error, retry
-                    retryCount++;
-                    if (retryCount <= maxRetries) {
-                        logger.warn("API request failed (status code: {}), retrying attempt {}", response.statusCode(), retryCount);
-                        Thread.sleep(1000 * retryCount); // Exponential backoff retry
-                    }
-                } else {
-                    // For other errors, throw exception directly
-                    logger.error("API returned error: {} - {}", response.statusCode(), response.body());
-                    throw new IOException("API error: " + response.statusCode() + " - " + response.body());
-                }
-            } catch (IOException | InterruptedException e) {
-                retryCount++;
-                if (retryCount <= maxRetries) {
-                    logger.warn("API request failed, retrying attempt {}: {}", retryCount, e.getMessage());
-                    Thread.sleep(1000 * retryCount); // Exponential backoff retry
-                } else {
-                    throw e; // Retry count exhausted, throw exception
-                }
-            }
-        }
-        
-        if (response == null || response.statusCode() != 200) {
-            throw new IOException("API request failed after " + maxRetries + " retries");
-        }
-
-        try {
-            JsonNode rootNode = new ObjectMapper().readTree(response.body());
-            if (rootNode.has("choices") && rootNode.get("choices").isArray() && rootNode.get("choices").size() > 0) {
-                JsonNode firstChoice = rootNode.get("choices").get(0);
-                if (firstChoice.has("message") && firstChoice.get("message").has("content")) {
-                    return firstChoice.get("message").get("content").asText();
-                }
-            }
-            logger.error("Unexpected API response format: {}", response.body());
-            throw new IOException("Unexpected API response format");
-        } catch (Exception e) {
-            logger.error("Error parsing API response: {}", e.getMessage());
-            throw new IOException("Error parsing API response: " + e.getMessage());
-        }
+        return insights.toString();
     }
 
     /**
@@ -394,30 +246,139 @@ public class AIService {
     }
 
     /**
-     * Generates financial insights based on a user message.
-     * This method is used by the AIPanel for direct chatting functionality.
-     *
-     * @param userMessage The message from the user
-     * @return AI-generated financial insights or a fallback message if the API key is not configured
+     * Calculates financial health score based on transaction data
      */
-    public String generateFinancialInsights(String userMessage) {
-        if (DEEPSEEK_API_KEY == null || DEEPSEEK_API_KEY.isEmpty() || DEEPSEEK_API_KEY.equals("your_api_key_here")) {
-            logger.warn("DeepSeek API key not configured. Using fallback message.");
-            return "Unable to process your request as the AI service is not configured. Please add your DeepSeek API key in the settings.";
+    public Map<String, Object> calculateFinancialHealthScore(List<Transaction> transactions) {
+        Map<String, Object> result = new HashMap<>();
+        
+        // Calculate income and expenses
+        BigDecimal totalIncome = transactions.stream()
+            .filter(t -> t.getType() == TransactionType.INCOME)
+            .map(Transaction::getAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        BigDecimal totalExpenses = transactions.stream()
+            .filter(t -> t.getType() == TransactionType.EXPENSE)
+            .map(Transaction::getAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        BigDecimal netSavings = totalIncome.subtract(totalExpenses);
+        
+        // Calculate savings rate
+        BigDecimal savingsRate = BigDecimal.ZERO;
+        if (totalIncome.compareTo(BigDecimal.ZERO) > 0) {
+            savingsRate = netSavings.multiply(new BigDecimal("100"))
+                .divide(totalIncome, 2, RoundingMode.HALF_UP);
         }
-
-        try {
-            return callDeepSeekForInsights(userMessage);
-        } catch (Exception e) {
-            logger.error("Error generating financial insights: {}", e.getMessage());
-            String errorMessage = "Sorry, I encountered an error while processing your request. Please try again later.";
-            
-            // If it's a specific API error, provide more detailed feedback
-            if (e.getMessage().contains("API error")) {
-                errorMessage += "\n\nTechnical error: " + e.getMessage();
-            }
-            
-            return errorMessage;
+        
+        // Calculate expense-to-income ratio
+        BigDecimal expenseToIncomeRatio = BigDecimal.ONE; // Default to 1 (100%)
+        if (totalIncome.compareTo(BigDecimal.ZERO) > 0) {
+            expenseToIncomeRatio = totalExpenses.divide(totalIncome, 2, RoundingMode.HALF_UP);
         }
+        
+        // Basic score calculation based on savings rate
+        int savingsComponent = 0;
+        if (savingsRate.compareTo(BigDecimal.ZERO) > 0) {
+            savingsComponent = Math.min(50, savingsRate.intValue());
+        }
+        
+        // Score based on expense ratio (lower is better)
+        int expenseComponent = 0;
+        if (expenseToIncomeRatio.compareTo(BigDecimal.ONE) <= 0) {
+            expenseComponent = (int)(50 * (1 - expenseToIncomeRatio.doubleValue()));
+        }
+        
+        // Final score combines both components
+        int finalScore = savingsComponent + expenseComponent;
+        
+        // Determine category based on score
+        String category;
+        if (finalScore >= 80) {
+            category = "Excellent";
+        } else if (finalScore >= 60) {
+            category = "Good";
+        } else if (finalScore >= 40) {
+            category = "Fair";
+        } else if (finalScore >= 20) {
+            category = "Needs Improvement";
+        } else {
+            category = "Critical";
+        }
+        
+        // Generate recommendations based on financial metrics
+        List<String> recommendations = new ArrayList<>();
+        
+        if (savingsRate.compareTo(new BigDecimal("20")) < 0) {
+            recommendations.add("Increase savings rate to at least 20% to ensure long-term financial security");
+        }
+        
+        if (expenseToIncomeRatio.compareTo(new BigDecimal("0.8")) > 0) {
+            recommendations.add("Reduce expense-to-income ratio to below 80% to avoid financial stress");
+        }
+        
+        if (netSavings.compareTo(BigDecimal.ZERO) <= 0) {
+            recommendations.add("Urgently adjust budget to ensure income exceeds expenses and avoid negative cash flow");
+        }
+        
+        // Add general recommendations
+        recommendations.add("Establish an emergency fund equivalent to 3-6 months of living expenses");
+        recommendations.add("Regularly review bills and subscription services, cancel unnecessary expenses");
+        recommendations.add("Consider adding additional income sources to improve overall financial stability");
+        
+        // Populate result map
+        result.put("score", finalScore);
+        result.put("category", category);
+        result.put("savingsRate", savingsRate);
+        result.put("expenseToIncomeRatio", expenseToIncomeRatio);
+        result.put("totalIncome", totalIncome);
+        result.put("totalExpenses", totalExpenses);
+        result.put("netSavings", netSavings);
+        result.put("recommendations", recommendations);
+        
+        return result;
+    }
+    
+    /**
+     * Generates financial health report based on transaction data
+     */
+    public String generateFinancialHealthReport(List<Transaction> transactions) {
+        Map<String, Object> healthScore = calculateFinancialHealthScore(transactions);
+        
+        // Create basic financial health report
+        int score = (int) healthScore.get("score");
+        String category = (String) healthScore.get("category");
+        BigDecimal savingsRate = (BigDecimal) healthScore.get("savingsRate");
+        BigDecimal expenseRatio = (BigDecimal) healthScore.get("expenseToIncomeRatio");
+        
+        @SuppressWarnings("unchecked")
+        List<String> recommendations = (List<String>) healthScore.get("recommendations");
+        
+        // Generate report
+        StringBuilder report = new StringBuilder();
+        report.append("# Financial Health Report\n\n");
+        report.append(String.format("Your Financial Health Score: %d/100 (%s)\n\n", score, category));
+        report.append(String.format("Savings Rate: %.1f%%\n", savingsRate.doubleValue()));
+        report.append(String.format("Expense-to-Income Ratio: %.2f\n\n", expenseRatio.doubleValue()));
+        
+        report.append("## Analysis\n\n");
+        if (score >= 80) {
+            report.append("Your financial condition is very healthy. You have good saving habits and manage expenses well. Continuing these good habits will help you achieve long-term financial goals.\n\n");
+        } else if (score >= 60) {
+            report.append("Your financial condition is good, but there is still room for improvement. Increasing savings or reducing non-essential expenses can further improve your financial health.\n\n");
+        } else if (score >= 40) {
+            report.append("Your financial condition is average and needs improvement. We recommend reviewing your spending patterns, finding areas for reduction, and increasing savings.\n\n");
+        } else if (score >= 20) {
+            report.append("Your financial condition needs significant improvement. Prioritize reducing expenses, increasing savings, and possibly seeking additional income sources.\n\n");
+        } else {
+            report.append("Your financial condition is at a critical level. Immediate action is needed to reduce expenses, re-plan your budget, and avoid more serious financial problems.\n\n");
+        }
+        
+        report.append("## Recommendations\n\n");
+        for (String recommendation : recommendations) {
+            report.append("- ").append(recommendation).append("\n");
+        }
+        
+        return report.toString();
     }
 } 

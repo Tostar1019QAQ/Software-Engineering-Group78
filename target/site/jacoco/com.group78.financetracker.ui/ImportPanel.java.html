@@ -1,0 +1,594 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ImportPanel.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">finance-tracker</a> &gt; <a href="index.source.html" class="el_package">com.group78.financetracker.ui</a> &gt; <span class="el_source">ImportPanel.java</span></div><h1>ImportPanel.java</h1><pre class="source lang-java linenums">package com.group78.financetracker.ui;
+
+import com.group78.financetracker.service.ImportService;
+import com.group78.financetracker.model.Transaction;
+import com.group78.financetracker.model.TransactionType;
+import com.group78.financetracker.ui.DashboardPanel;
+import com.group78.financetracker.ui.MainFrame;
+import com.group78.financetracker.service.DashboardService;
+import com.toedter.calendar.JDateChooser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.swing.*;
+import javax.swing.border.TitledBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.awt.Window;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.dnd.*;
+import java.io.File;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+import java.util.TooManyListenersException;
+
+public class ImportPanel extends JPanel {
+<span class="nc" id="L33">    private static final Logger logger = LoggerFactory.getLogger(ImportPanel.class);</span>
+    private final CardLayout cardLayout;
+    private final JPanel contentPanel;
+    private final ImportService importService;
+    private JPanel dropZone;
+    private JTable previewTable;
+    private DefaultTableModel tableModel;
+    private JLabel statusLabel;
+    
+    // Manual entry components
+    private JPanel manualEntryPanel;
+    private JDateChooser dateChooser;
+    private JTextField descriptionField;
+    private JTextField amountField;
+    private JComboBox&lt;String&gt; categoryComboBox;
+    private JComboBox&lt;String&gt; paymentMethodComboBox;
+    private JComboBox&lt;String&gt; currencyComboBox;
+    private JComboBox&lt;TransactionType&gt; typeComboBox;
+
+<span class="nc" id="L52">    public ImportPanel(CardLayout cardLayout, JPanel contentPanel) {</span>
+<span class="nc" id="L53">        this.cardLayout = cardLayout;</span>
+<span class="nc" id="L54">        this.contentPanel = contentPanel;</span>
+<span class="nc" id="L55">        this.importService = new ImportService();</span>
+
+<span class="nc" id="L57">        setLayout(new BorderLayout(10, 10));</span>
+<span class="nc" id="L58">        setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));</span>
+
+<span class="nc" id="L60">        createComponents();</span>
+<span class="nc" id="L61">    }</span>
+
+    private void createComponents() {
+        // Header
+<span class="nc" id="L65">        add(createHeaderPanel(), BorderLayout.NORTH);</span>
+
+        // Main content
+<span class="nc" id="L68">        JPanel mainContent = new JPanel(new BorderLayout(10, 10));</span>
+
+        // Left panel for import options
+<span class="nc" id="L71">        JPanel leftPanel = new JPanel(new BorderLayout(10, 10));</span>
+<span class="nc" id="L72">        leftPanel.setPreferredSize(new Dimension(300, 0));</span>
+
+        // Create tabbed pane for different import methods
+<span class="nc" id="L75">        JTabbedPane importTabs = new JTabbedPane();</span>
+        
+        // File upload tab
+<span class="nc" id="L78">        JPanel uploadPanel = createUploadPanel();</span>
+<span class="nc" id="L79">        importTabs.addTab(&quot;File Import&quot;, uploadPanel);</span>
+        
+        // Manual entry tab
+<span class="nc" id="L82">        manualEntryPanel = createManualEntryPanel();</span>
+<span class="nc" id="L83">        importTabs.addTab(&quot;Manual Entry&quot;, manualEntryPanel);</span>
+        
+        // API import tab
+<span class="nc" id="L86">        JPanel apiPanel = createApiPanel();</span>
+<span class="nc" id="L87">        importTabs.addTab(&quot;API Import&quot;, apiPanel);</span>
+        
+<span class="nc" id="L89">        leftPanel.add(importTabs, BorderLayout.CENTER);</span>
+        
+<span class="nc" id="L91">        mainContent.add(leftPanel, BorderLayout.WEST);</span>
+
+        // Preview section
+<span class="nc" id="L94">        JPanel previewPanel = createPreviewPanel();</span>
+<span class="nc" id="L95">        mainContent.add(previewPanel, BorderLayout.CENTER);</span>
+
+<span class="nc" id="L97">        add(mainContent, BorderLayout.CENTER);</span>
+<span class="nc" id="L98">    }</span>
+
+    private JPanel createHeaderPanel() {
+<span class="nc" id="L101">        JPanel header = new JPanel(new BorderLayout());</span>
+<span class="nc" id="L102">        header.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));</span>
+
+<span class="nc" id="L104">        JLabel titleLabel = new JLabel(&quot;Import Transactions&quot;);</span>
+<span class="nc" id="L105">        titleLabel.setFont(new Font(&quot;Arial&quot;, Font.BOLD, 24));</span>
+
+<span class="nc" id="L107">        JButton backButton = new JButton(&quot;← Back to Dashboard&quot;);</span>
+<span class="nc" id="L108">        backButton.setFocusPainted(false);</span>
+<span class="nc" id="L109">        backButton.addActionListener(e -&gt; cardLayout.show(contentPanel, &quot;Dashboard&quot;));</span>
+
+<span class="nc" id="L111">        header.add(backButton, BorderLayout.WEST);</span>
+<span class="nc" id="L112">        header.add(titleLabel, BorderLayout.CENTER);</span>
+
+<span class="nc" id="L114">        return header;</span>
+    }
+
+    private JPanel createUploadPanel() {
+<span class="nc" id="L118">        JPanel panel = new JPanel(new BorderLayout(10, 10));</span>
+<span class="nc" id="L119">        panel.setBorder(BorderFactory.createTitledBorder(</span>
+<span class="nc" id="L120">            BorderFactory.createEtchedBorder(), </span>
+            &quot;File Upload&quot;,
+            TitledBorder.LEFT,
+            TitledBorder.TOP
+        ));
+
+        // Drop zone
+<span class="nc" id="L127">        dropZone = new JPanel(new BorderLayout());</span>
+<span class="nc" id="L128">        dropZone.setPreferredSize(new Dimension(0, 200));</span>
+<span class="nc" id="L129">        dropZone.setBorder(BorderFactory.createLineBorder(Color.GRAY, 2, true));</span>
+<span class="nc" id="L130">        dropZone.setBackground(new Color(245, 247, 250));</span>
+
+<span class="nc" id="L132">        JLabel dropLabel = new JLabel(&quot;Drag &amp; Drop CSV or XLSX File Here&quot;, SwingConstants.CENTER);</span>
+<span class="nc" id="L133">        dropLabel.setFont(new Font(&quot;Arial&quot;, Font.BOLD, 14));</span>
+<span class="nc" id="L134">        dropZone.add(dropLabel, BorderLayout.CENTER);</span>
+
+        // Setup drag and drop
+<span class="nc" id="L137">        setupDragAndDrop();</span>
+
+        // Browse button
+<span class="nc" id="L140">        JButton browseButton = new JButton(&quot;Browse Files&quot;);</span>
+<span class="nc" id="L141">        browseButton.addActionListener(e -&gt; browseFiles());</span>
+
+<span class="nc" id="L143">        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));</span>
+<span class="nc" id="L144">        buttonPanel.add(browseButton);</span>
+
+<span class="nc" id="L146">        panel.add(dropZone, BorderLayout.CENTER);</span>
+<span class="nc" id="L147">        panel.add(buttonPanel, BorderLayout.SOUTH);</span>
+
+<span class="nc" id="L149">        return panel;</span>
+    }
+    
+    private JPanel createManualEntryPanel() {
+<span class="nc" id="L153">        JPanel panel = new JPanel(new BorderLayout(10, 10));</span>
+<span class="nc" id="L154">        panel.setBorder(BorderFactory.createTitledBorder(</span>
+<span class="nc" id="L155">            BorderFactory.createEtchedBorder(), </span>
+            &quot;Manual Transaction Entry&quot;,
+            TitledBorder.LEFT,
+            TitledBorder.TOP
+        ));
+        
+        // Form panel
+<span class="nc" id="L162">        JPanel formPanel = new JPanel(new GridLayout(8, 2, 5, 10));</span>
+<span class="nc" id="L163">        formPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));</span>
+        
+        // Date field
+<span class="nc" id="L166">        formPanel.add(new JLabel(&quot;Date:&quot;));</span>
+<span class="nc" id="L167">        dateChooser = new JDateChooser();</span>
+<span class="nc" id="L168">        dateChooser.setDate(new Date()); // Set to current date</span>
+<span class="nc" id="L169">        formPanel.add(dateChooser);</span>
+        
+        // Description field
+<span class="nc" id="L172">        formPanel.add(new JLabel(&quot;Description:&quot;));</span>
+<span class="nc" id="L173">        descriptionField = new JTextField();</span>
+<span class="nc" id="L174">        formPanel.add(descriptionField);</span>
+        
+        // Amount field
+<span class="nc" id="L177">        formPanel.add(new JLabel(&quot;Amount:&quot;));</span>
+<span class="nc" id="L178">        amountField = new JTextField();</span>
+<span class="nc" id="L179">        formPanel.add(amountField);</span>
+        
+        // Transaction type
+<span class="nc" id="L182">        formPanel.add(new JLabel(&quot;Type:&quot;));</span>
+<span class="nc" id="L183">        typeComboBox = new JComboBox&lt;&gt;(TransactionType.values());</span>
+<span class="nc" id="L184">        formPanel.add(typeComboBox);</span>
+        
+        // Category field with predefined options
+<span class="nc" id="L187">        formPanel.add(new JLabel(&quot;Category:&quot;));</span>
+<span class="nc" id="L188">        categoryComboBox = new JComboBox&lt;&gt;(new String[]{</span>
+            &quot;Food&quot;, &quot;Transport&quot;, &quot;Shopping&quot;, &quot;Entertainment&quot;, 
+            &quot;Housing&quot;, &quot;Healthcare&quot;, &quot;Education&quot;, &quot;Communication&quot;, &quot;Others&quot;
+        });
+<span class="nc" id="L192">        categoryComboBox.setEditable(true); // Allow custom categories</span>
+<span class="nc" id="L193">        formPanel.add(categoryComboBox);</span>
+        
+        // Payment method
+<span class="nc" id="L196">        formPanel.add(new JLabel(&quot;Payment Method:&quot;));</span>
+<span class="nc" id="L197">        paymentMethodComboBox = new JComboBox&lt;&gt;(new String[]{</span>
+            &quot;Cash&quot;, &quot;Credit Card&quot;, &quot;Debit Card&quot;, &quot;Bank Transfer&quot;, 
+            &quot;Mobile Payment&quot;, &quot;Other&quot;
+        });
+<span class="nc" id="L201">        paymentMethodComboBox.setEditable(true); // Allow custom payment methods</span>
+<span class="nc" id="L202">        formPanel.add(paymentMethodComboBox);</span>
+        
+        // Currency
+<span class="nc" id="L205">        formPanel.add(new JLabel(&quot;Currency:&quot;));</span>
+<span class="nc" id="L206">        currencyComboBox = new JComboBox&lt;&gt;(new String[]{</span>
+            &quot;USD&quot;, &quot;EUR&quot;, &quot;CNY&quot;, &quot;GBP&quot;, &quot;JPY&quot;
+        });
+<span class="nc" id="L209">        currencyComboBox.setEditable(true);</span>
+<span class="nc" id="L210">        currencyComboBox.setSelectedItem(&quot;USD&quot;); // Default to USD</span>
+<span class="nc" id="L211">        formPanel.add(currencyComboBox);</span>
+        
+        // Buttons
+<span class="nc" id="L214">        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));</span>
+<span class="nc" id="L215">        JButton clearButton = new JButton(&quot;Clear&quot;);</span>
+<span class="nc" id="L216">        JButton addButton = new JButton(&quot;Add Transaction&quot;);</span>
+        
+<span class="nc" id="L218">        clearButton.addActionListener(e -&gt; clearManualEntryForm());</span>
+<span class="nc" id="L219">        addButton.addActionListener(e -&gt; addManualTransaction());</span>
+        
+<span class="nc" id="L221">        buttonPanel.add(clearButton);</span>
+<span class="nc" id="L222">        buttonPanel.add(addButton);</span>
+        
+<span class="nc" id="L224">        panel.add(formPanel, BorderLayout.CENTER);</span>
+<span class="nc" id="L225">        panel.add(buttonPanel, BorderLayout.SOUTH);</span>
+        
+<span class="nc" id="L227">        return panel;</span>
+    }
+    
+    private void clearManualEntryForm() {
+<span class="nc" id="L231">        dateChooser.setDate(new Date());</span>
+<span class="nc" id="L232">        descriptionField.setText(&quot;&quot;);</span>
+<span class="nc" id="L233">        amountField.setText(&quot;&quot;);</span>
+<span class="nc" id="L234">        typeComboBox.setSelectedIndex(0);</span>
+<span class="nc" id="L235">        categoryComboBox.setSelectedIndex(0);</span>
+<span class="nc" id="L236">        paymentMethodComboBox.setSelectedIndex(0);</span>
+<span class="nc" id="L237">        currencyComboBox.setSelectedItem(&quot;USD&quot;);</span>
+<span class="nc" id="L238">    }</span>
+    
+    private void addManualTransaction() {
+        try {
+            // Validate input fields
+<span class="nc bnc" id="L243" title="All 2 branches missed.">            if (dateChooser.getDate() == null) {</span>
+<span class="nc" id="L244">                throw new IllegalArgumentException(&quot;Please select a date&quot;);</span>
+            }
+            
+<span class="nc" id="L247">            String description = descriptionField.getText().trim();</span>
+<span class="nc bnc" id="L248" title="All 2 branches missed.">            if (description.isEmpty()) {</span>
+<span class="nc" id="L249">                throw new IllegalArgumentException(&quot;Description cannot be empty&quot;);</span>
+            }
+            
+<span class="nc" id="L252">            String amountStr = amountField.getText().trim();</span>
+<span class="nc bnc" id="L253" title="All 2 branches missed.">            if (amountStr.isEmpty()) {</span>
+<span class="nc" id="L254">                throw new IllegalArgumentException(&quot;Amount cannot be empty&quot;);</span>
+            }
+            
+            // Parse amount
+            BigDecimal amount;
+            try {
+<span class="nc" id="L260">                amount = new BigDecimal(amountStr.replace(&quot;,&quot;, &quot;&quot;));</span>
+<span class="nc" id="L261">            } catch (NumberFormatException e) {</span>
+<span class="nc" id="L262">                throw new IllegalArgumentException(&quot;Invalid amount format&quot;);</span>
+<span class="nc" id="L263">            }</span>
+            
+            // If amount is negative and type is EXPENSE, make it positive
+<span class="nc" id="L266">            TransactionType type = (TransactionType) typeComboBox.getSelectedItem();</span>
+<span class="nc bnc" id="L267" title="All 4 branches missed.">            if (type == TransactionType.EXPENSE &amp;&amp; amount.compareTo(BigDecimal.ZERO) &gt; 0) {</span>
+<span class="nc" id="L268">                amount = amount.negate();</span>
+<span class="nc bnc" id="L269" title="All 4 branches missed.">            } else if (type == TransactionType.INCOME &amp;&amp; amount.compareTo(BigDecimal.ZERO) &lt; 0) {</span>
+<span class="nc" id="L270">                amount = amount.abs();</span>
+            }
+            
+            // Get other fields
+<span class="nc" id="L274">            String category = categoryComboBox.getSelectedItem().toString().trim();</span>
+<span class="nc" id="L275">            String paymentMethod = paymentMethodComboBox.getSelectedItem().toString().trim();</span>
+<span class="nc" id="L276">            String currency = currencyComboBox.getSelectedItem().toString().trim();</span>
+            
+            // Convert date to LocalDateTime
+<span class="nc" id="L279">            LocalDateTime dateTime = dateChooser.getDate().toInstant()</span>
+<span class="nc" id="L280">                .atZone(ZoneId.systemDefault())</span>
+<span class="nc" id="L281">                .toLocalDateTime();</span>
+            
+            // Create transaction
+<span class="nc" id="L284">            Transaction transaction = new Transaction(</span>
+<span class="nc" id="L285">                UUID.randomUUID().toString(),</span>
+<span class="nc" id="L286">                amount.abs(), // Store absolute value</span>
+                category,
+                description,
+                dateTime,
+                type,
+                paymentMethod,
+                currency
+            );
+            
+            // Add to service
+<span class="nc" id="L296">            importService.addTransaction(transaction);</span>
+            
+            // Update preview
+<span class="nc" id="L299">            updatePreview(List.of(transaction));</span>
+            
+            // Show success message
+<span class="nc" id="L302">            statusLabel.setText(&quot;Transaction added successfully&quot;);</span>
+            
+            // Clear form for next entry
+<span class="nc" id="L305">            clearManualEntryForm();</span>
+            
+<span class="nc" id="L307">        } catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L308">            JOptionPane.showMessageDialog(this, </span>
+<span class="nc" id="L309">                e.getMessage(), </span>
+                &quot;Input Error&quot;, 
+                JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L312">        }</span>
+<span class="nc" id="L313">    }</span>
+
+    private JPanel createApiPanel() {
+<span class="nc" id="L316">        JPanel panel = new JPanel(new BorderLayout(10, 10));</span>
+<span class="nc" id="L317">        panel.setBorder(BorderFactory.createTitledBorder(</span>
+<span class="nc" id="L318">            BorderFactory.createEtchedBorder(), </span>
+            &quot;API Import&quot;,
+            TitledBorder.LEFT,
+            TitledBorder.TOP
+        ));
+
+        // Form panel
+<span class="nc" id="L325">        JPanel formPanel = new JPanel(new GridLayout(4, 1, 5, 5));</span>
+<span class="nc" id="L326">        formPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));</span>
+
+        // API URL
+<span class="nc" id="L329">        JTextField apiUrlField = new JTextField();</span>
+<span class="nc" id="L330">        formPanel.add(new JLabel(&quot;API URL:&quot;));</span>
+<span class="nc" id="L331">        formPanel.add(apiUrlField);</span>
+
+        // API Key
+<span class="nc" id="L334">        JTextField apiKeyField = new JTextField();</span>
+<span class="nc" id="L335">        formPanel.add(new JLabel(&quot;API Key:&quot;));</span>
+<span class="nc" id="L336">        formPanel.add(apiKeyField);</span>
+
+        // Account Number
+<span class="nc" id="L339">        JTextField accountField = new JTextField();</span>
+<span class="nc" id="L340">        formPanel.add(new JLabel(&quot;Account Number:&quot;));</span>
+<span class="nc" id="L341">        formPanel.add(accountField);</span>
+
+        // Buttons
+<span class="nc" id="L344">        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));</span>
+<span class="nc" id="L345">        JButton resetButton = new JButton(&quot;Reset&quot;);</span>
+<span class="nc" id="L346">        JButton connectButton = new JButton(&quot;Connect API&quot;);</span>
+
+<span class="nc" id="L348">        resetButton.addActionListener(e -&gt; {</span>
+<span class="nc" id="L349">            apiUrlField.setText(&quot;&quot;);</span>
+<span class="nc" id="L350">            apiKeyField.setText(&quot;&quot;);</span>
+<span class="nc" id="L351">            accountField.setText(&quot;&quot;);</span>
+<span class="nc" id="L352">        });</span>
+
+<span class="nc" id="L354">        connectButton.addActionListener(e -&gt; {</span>
+<span class="nc" id="L355">            JOptionPane.showMessageDialog(this,</span>
+                &quot;API connection feature is not implemented yet.&quot;,
+                &quot;Not Implemented&quot;,
+                JOptionPane.INFORMATION_MESSAGE);
+<span class="nc" id="L359">        });</span>
+
+<span class="nc" id="L361">        buttonPanel.add(resetButton);</span>
+<span class="nc" id="L362">        buttonPanel.add(connectButton);</span>
+
+<span class="nc" id="L364">        panel.add(formPanel, BorderLayout.CENTER);</span>
+<span class="nc" id="L365">        panel.add(buttonPanel, BorderLayout.SOUTH);</span>
+
+<span class="nc" id="L367">        return panel;</span>
+    }
+
+    private JPanel createPreviewPanel() {
+<span class="nc" id="L371">        JPanel panel = new JPanel(new BorderLayout(10, 10));</span>
+<span class="nc" id="L372">        panel.setBorder(BorderFactory.createTitledBorder(</span>
+<span class="nc" id="L373">            BorderFactory.createEtchedBorder(), </span>
+            &quot;Preview&quot;,
+            TitledBorder.LEFT,
+            TitledBorder.TOP
+        ));
+
+        // Status label
+<span class="nc" id="L380">        statusLabel = new JLabel(&quot;No data imported yet&quot;, SwingConstants.CENTER);</span>
+<span class="nc" id="L381">        statusLabel.setFont(new Font(&quot;Arial&quot;, Font.ITALIC, 14));</span>
+<span class="nc" id="L382">        statusLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));</span>
+
+        // Table
+<span class="nc" id="L385">        String[] columns = {&quot;Date&quot;, &quot;Description&quot;, &quot;Amount&quot;, &quot;Category&quot;, &quot;Payment Method&quot;, &quot;Currency&quot;};</span>
+<span class="nc" id="L386">        tableModel = new DefaultTableModel(columns, 0);</span>
+<span class="nc" id="L387">        previewTable = new JTable(tableModel);</span>
+<span class="nc" id="L388">        previewTable.setFillsViewportHeight(true);</span>
+
+        // Scroll pane
+<span class="nc" id="L391">        JScrollPane scrollPane = new JScrollPane(previewTable);</span>
+        
+<span class="nc" id="L393">        panel.add(statusLabel, BorderLayout.NORTH);</span>
+<span class="nc" id="L394">        panel.add(scrollPane, BorderLayout.CENTER);</span>
+
+<span class="nc" id="L396">        return panel;</span>
+    }
+
+    private void setupDragAndDrop() {
+<span class="nc" id="L400">        DropTarget dropTarget = new DropTarget();</span>
+        try {
+<span class="nc" id="L402">            dropTarget.addDropTargetListener(new DropTargetListener() {</span>
+                public void dragEnter(DropTargetDragEvent dtde) {
+<span class="nc bnc" id="L404" title="All 2 branches missed.">                    if (isDragAcceptable(dtde)) {</span>
+<span class="nc" id="L405">                        dropZone.setBorder(BorderFactory.createLineBorder(new Color(74, 107, 255), 2, true));</span>
+<span class="nc" id="L406">                        dtde.acceptDrag(DnDConstants.ACTION_COPY);</span>
+                    } else {
+<span class="nc" id="L408">                        dtde.rejectDrag();</span>
+                    }
+<span class="nc" id="L410">                }</span>
+
+                public void dragExit(DropTargetEvent dte) {
+<span class="nc" id="L413">                    dropZone.setBorder(BorderFactory.createLineBorder(Color.GRAY, 2, true));</span>
+<span class="nc" id="L414">                }</span>
+
+                public void dragOver(DropTargetDragEvent dtde) {
+                    // Not needed
+<span class="nc" id="L418">                }</span>
+
+                public void dropActionChanged(DropTargetDragEvent dtde) {
+<span class="nc bnc" id="L421" title="All 2 branches missed.">                    if (isDragAcceptable(dtde)) {</span>
+<span class="nc" id="L422">                        dtde.acceptDrag(DnDConstants.ACTION_COPY);</span>
+                    } else {
+<span class="nc" id="L424">                        dtde.rejectDrag();</span>
+                    }
+<span class="nc" id="L426">                }</span>
+
+                public void drop(DropTargetDropEvent dtde) {
+                    try {
+<span class="nc" id="L430">                        Transferable tr = dtde.getTransferable();</span>
+<span class="nc bnc" id="L431" title="All 2 branches missed.">                        if (tr.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {</span>
+<span class="nc" id="L432">                            dtde.acceptDrop(DnDConstants.ACTION_COPY);</span>
+                            @SuppressWarnings(&quot;unchecked&quot;)
+<span class="nc" id="L434">                            List&lt;File&gt; files = (List&lt;File&gt;) tr.getTransferData(DataFlavor.javaFileListFlavor);</span>
+<span class="nc bnc" id="L435" title="All 2 branches missed.">                            if (!files.isEmpty()) {</span>
+<span class="nc" id="L436">                                processImportedFile(files.get(0));</span>
+                            }
+<span class="nc" id="L438">                            dtde.dropComplete(true);</span>
+<span class="nc" id="L439">                        } else {</span>
+<span class="nc" id="L440">                            dtde.rejectDrop();</span>
+                        }
+<span class="nc" id="L442">                    } catch (Exception e) {</span>
+<span class="nc" id="L443">                        e.printStackTrace();</span>
+<span class="nc" id="L444">                        dtde.rejectDrop();</span>
+<span class="nc" id="L445">                    }</span>
+<span class="nc" id="L446">                }</span>
+            });
+<span class="nc" id="L448">        } catch (TooManyListenersException e) {</span>
+<span class="nc" id="L449">            e.printStackTrace();</span>
+<span class="nc" id="L450">        }</span>
+<span class="nc" id="L451">        dropZone.setDropTarget(dropTarget);</span>
+<span class="nc" id="L452">    }</span>
+
+    private boolean isDragAcceptable(DropTargetDragEvent dtde) {
+<span class="nc" id="L455">        return dtde.isDataFlavorSupported(DataFlavor.javaFileListFlavor);</span>
+    }
+
+    private void browseFiles() {
+<span class="nc" id="L459">        JFileChooser fileChooser = new JFileChooser();</span>
+<span class="nc" id="L460">        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);</span>
+        
+        // Add file filters for CSV and XLSX
+<span class="nc" id="L463">        FileNameExtensionFilter csvFilter = new FileNameExtensionFilter(</span>
+            &quot;CSV Files (*.csv)&quot;, &quot;csv&quot;);
+<span class="nc" id="L465">        FileNameExtensionFilter excelFilter = new FileNameExtensionFilter(</span>
+            &quot;Excel Files (*.xlsx)&quot;, &quot;xlsx&quot;);
+        
+<span class="nc" id="L468">        fileChooser.addChoosableFileFilter(csvFilter);</span>
+<span class="nc" id="L469">        fileChooser.addChoosableFileFilter(excelFilter);</span>
+<span class="nc" id="L470">        fileChooser.setFileFilter(csvFilter); // Default to CSV</span>
+        
+<span class="nc bnc" id="L472" title="All 2 branches missed.">        if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {</span>
+<span class="nc" id="L473">            processImportedFile(fileChooser.getSelectedFile());</span>
+        }
+<span class="nc" id="L475">    }</span>
+
+    private void processImportedFile(File file) {
+        try {
+<span class="nc" id="L479">            List&lt;Transaction&gt; transactions = importService.importFromFile(file);</span>
+<span class="nc" id="L480">            updatePreview(transactions);</span>
+<span class="nc" id="L481">            statusLabel.setText(&quot;Data imported successfully: &quot; + transactions.size() + &quot; transactions&quot;);</span>
+            
+            // Refresh the dashboard 
+<span class="nc" id="L484">            updateDashboard();</span>
+            
+            // Show success message with option to view dashboard
+<span class="nc" id="L487">            int choice = JOptionPane.showConfirmDialog(</span>
+                this,
+                &quot;Data imported successfully! Would you like to view the updated dashboard?&quot;,
+                &quot;Import Successful&quot;,
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.INFORMATION_MESSAGE
+            );
+            
+<span class="nc bnc" id="L495" title="All 2 branches missed.">            if (choice == JOptionPane.YES_OPTION) {</span>
+                // Switch to dashboard and ensure it's refreshed
+<span class="nc" id="L497">                JOptionPane.showMessageDialog(</span>
+                this,
+                &quot;Please click \&quot;refresh\&quot; button to view the updated dashboard&quot;,
+                &quot;Import Successful&quot;,
+                JOptionPane.INFORMATION_MESSAGE
+            );
+<span class="nc" id="L503">                cardLayout.show(contentPanel, &quot;Dashboard&quot;);</span>
+<span class="nc" id="L504">                forceRefreshDashboard();</span>
+            }
+            
+<span class="nc" id="L507">        } catch (Exception e) {</span>
+<span class="nc" id="L508">            e.printStackTrace();</span>
+<span class="nc" id="L509">            JOptionPane.showMessageDialog(this,</span>
+<span class="nc" id="L510">                &quot;Error importing file: &quot; + e.getMessage(),</span>
+                &quot;Import Error&quot;,
+                JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L513">        }</span>
+<span class="nc" id="L514">    }</span>
+
+    private void updatePreview(List&lt;Transaction&gt; transactions) {
+<span class="nc" id="L517">        tableModel.setRowCount(0);</span>
+<span class="nc bnc" id="L518" title="All 2 branches missed.">        for (Transaction transaction : transactions) {</span>
+<span class="nc bnc" id="L519" title="All 2 branches missed.">            String amount = transaction.getType() == TransactionType.EXPENSE ? </span>
+<span class="nc" id="L520">                &quot;-&quot; + transaction.getAmount().toString() : </span>
+<span class="nc" id="L521">                transaction.getAmount().toString();</span>
+                
+<span class="nc" id="L523">            Object[] rowData = {</span>
+<span class="nc" id="L524">                transaction.getDateTime().toLocalDate(),</span>
+<span class="nc" id="L525">                transaction.getDescription(),</span>
+<span class="nc" id="L526">                amount + &quot; &quot; + transaction.getCurrency(),</span>
+<span class="nc" id="L527">                transaction.getCategory(),</span>
+<span class="nc" id="L528">                transaction.getPaymentMethod(),</span>
+<span class="nc" id="L529">                transaction.getCurrency()</span>
+            };
+<span class="nc" id="L531">            tableModel.addRow(rowData);</span>
+<span class="nc" id="L532">        }</span>
+<span class="nc" id="L533">    }</span>
+
+    private void updateDashboard() {
+<span class="nc" id="L536">        logger.debug(&quot;Attempting to update dashboard...&quot;);</span>
+        
+        // Try to find MainFrame from parent components
+<span class="nc" id="L539">        Container parent = this.getParent();</span>
+<span class="nc bnc" id="L540" title="All 4 branches missed.">        while (parent != null &amp;&amp; !(parent instanceof MainFrame)) {</span>
+<span class="nc" id="L541">            parent = parent.getParent();</span>
+        }
+        
+<span class="nc bnc" id="L544" title="All 2 branches missed.">        if (parent instanceof MainFrame) {</span>
+<span class="nc" id="L545">            logger.debug(&quot;Found MainFrame, trying to get DashboardPanel&quot;);</span>
+<span class="nc" id="L546">            MainFrame mainFrame = (MainFrame) parent;</span>
+            
+            try {
+<span class="nc" id="L549">                Component[] components = mainFrame.getContentPane().getComponents();</span>
+<span class="nc bnc" id="L550" title="All 2 branches missed.">                for (Component component : components) {</span>
+<span class="nc bnc" id="L551" title="All 2 branches missed.">                    if (component instanceof DashboardPanel) {</span>
+<span class="nc" id="L552">                        logger.debug(&quot;Found DashboardPanel, performing update&quot;);</span>
+<span class="nc" id="L553">                        ((DashboardPanel) component).updateDashboard();</span>
+<span class="nc" id="L554">                        return;</span>
+                    }
+                }
+<span class="nc" id="L557">                logger.debug(&quot;dashboardPanel is not a DashboardPanel type&quot;);</span>
+<span class="nc" id="L558">            } catch (Exception e) {</span>
+<span class="nc" id="L559">                logger.error(&quot;Unable to access DashboardPanel: {}&quot;, e.getMessage(), e);</span>
+<span class="nc" id="L560">            }</span>
+<span class="nc" id="L561">        } else {</span>
+<span class="nc" id="L562">            logger.debug(&quot;MainFrame not found, using backup method&quot;);</span>
+<span class="nc" id="L563">            forceRefreshDashboard();</span>
+        }
+<span class="nc" id="L565">    }</span>
+    
+    private void forceRefreshDashboard() {
+        // Try to get Dashboard directly from MainFrame
+<span class="nc" id="L569">        Window window = SwingUtilities.getWindowAncestor(this);</span>
+<span class="nc bnc" id="L570" title="All 2 branches missed.">        if (window instanceof JFrame) {</span>
+<span class="nc" id="L571">            logger.debug(&quot;Found parent JFrame&quot;);</span>
+<span class="nc" id="L572">            Container contentPane = ((JFrame) window).getContentPane();</span>
+<span class="nc" id="L573">            forceRefreshComponents(contentPane);</span>
+<span class="nc" id="L574">        } else {</span>
+<span class="nc" id="L575">            logger.debug(&quot;Could not find parent JFrame&quot;);</span>
+        }
+<span class="nc" id="L577">    }</span>
+    
+    private void forceRefreshComponents(Container container) {
+<span class="nc" id="L580">        Component[] components = container.getComponents();</span>
+<span class="nc bnc" id="L581" title="All 2 branches missed.">        for (Component component : components) {</span>
+<span class="nc" id="L582">            logger.debug(&quot;Searching in component: {}&quot;, component.getClass().getName());</span>
+            
+<span class="nc bnc" id="L584" title="All 2 branches missed.">            if (component instanceof DashboardPanel) {</span>
+<span class="nc" id="L585">                logger.debug(&quot;Found DashboardPanel through recursive search&quot;);</span>
+<span class="nc" id="L586">                ((DashboardPanel) component).updateDashboard();</span>
+<span class="nc" id="L587">                return;</span>
+<span class="nc bnc" id="L588" title="All 2 branches missed.">            } else if (component instanceof Container) {</span>
+<span class="nc" id="L589">                forceRefreshComponents((Container) component);</span>
+            }
+        }
+<span class="nc" id="L592">    }</span>
+} 
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
