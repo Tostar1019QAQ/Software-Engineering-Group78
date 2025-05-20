@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -79,82 +80,24 @@ public class AIService {
             }
         }
         
-        // If keyword matching fails, try using DeepSeek API for categorization
-        try {
-            return categorizeWithDeepSeek(description);
-        } catch (Exception e) {
-            logger.error("DeepSeek API categorization failed: {}", e.getMessage());
-            return "Others"; // Default category
+        // 如果关键词匹配失败，使用简单的启发式匹配而不是调用API
+        if (lowerDesc.contains("gas") || lowerDesc.contains("uber") || lowerDesc.contains("bus") || lowerDesc.contains("train")) {
+            return "Transport";
+        } else if (lowerDesc.contains("grocery") || lowerDesc.contains("restaurant") || lowerDesc.contains("cafe")) {
+            return "Food";
+        } else if (lowerDesc.contains("rent") || lowerDesc.contains("mortgage")) {
+            return "Housing";
+        } else if (lowerDesc.contains("movie") || lowerDesc.contains("game") || lowerDesc.contains("netflix")) {
+            return "Entertainment";
+        } else if (lowerDesc.contains("doctor") || lowerDesc.contains("hospital") || lowerDesc.contains("medicine")) {
+            return "Healthcare";
+        } else if (lowerDesc.contains("school") || lowerDesc.contains("book") || lowerDesc.contains("course")) {
+            return "Education";
+        } else {
+            return "Others"; // 默认分类
         }
     }
     
-    /**
-     * Uses DeepSeek API to categorize a transaction
-     */
-    private String categorizeWithDeepSeek(String description) throws IOException, InterruptedException {
-        // If API key is not set, return default category
-        if (DEEPSEEK_API_KEY == null || DEEPSEEK_API_KEY.isEmpty()) {
-            logger.warn("DeepSeek API key not configured");
-            return "Others";
-        }
-        
-        // Build request body
-        ObjectNode requestBody = objectMapper.createObjectNode();
-        requestBody.put("model", DEEPSEEK_MODEL);
-        
-        ArrayNode messagesArray = requestBody.putArray("messages");
-        ObjectNode systemMessage = messagesArray.addObject();
-        systemMessage.put("role", "system");
-        systemMessage.put("content", "You are a financial transaction categorizer. " +
-                "Categorize the given transaction description into one of these categories: " +
-                String.join(", ", PREDEFINED_CATEGORIES) + ". " +
-                "Reply with only the category name, nothing else.");
-        
-        ObjectNode userMessage = messagesArray.addObject();
-        userMessage.put("role", "user");
-        userMessage.put("content", "Transaction description: " + description);
-        
-        // Set temperature for more deterministic output
-        requestBody.put("temperature", 0.1);
-        
-        // Build HTTP request
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(DEEPSEEK_API_URL))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + DEEPSEEK_API_KEY)
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
-                .build();
-        
-        // Send request and parse response
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        
-        if (response.statusCode() != 200) {
-            logger.error("DeepSeek API error: {} {}", response.statusCode(), response.body());
-            return "Others";
-        }
-        
-        // Parse response to get category
-        try {
-            Map<String, Object> responseMap = objectMapper.readValue(response.body(), Map.class);
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) responseMap.get("choices");
-            Map<String, Object> choice = choices.get(0);
-            Map<String, Object> message = (Map<String, Object>) choice.get("message");
-            String content = (String) message.get("content");
-            
-            // Clean and validate category
-            String category = content.trim();
-            if (PREDEFINED_CATEGORIES.contains(category)) {
-                return category;
-            } else {
-                logger.warn("DeepSeek returned invalid category: {}", category);
-                return "Others";
-            }
-        } catch (Exception e) {
-            logger.error("Failed to parse DeepSeek API response: {}", e.getMessage());
-            return "Others";
-        }
-    }
-
     /**
      * Analyzes spending patterns
      */
@@ -204,145 +147,53 @@ public class AIService {
     }
 
     /**
-     * Generates personalized financial analysis and advice using DeepSeek
+     * Generates personalized financial insights
      */
     public String generateFinancialInsights(List<Transaction> transactions) {
-        // Create generic prompt
-        String prompt = "Please analyze the user's transaction data and provide personalized financial advice. " +
-                       "Offer insights regarding spending patterns, budget management, and savings opportunities.";
+        if (transactions.isEmpty()) {
+            return "没有足够的交易数据进行分析。";
+        }
         
-        return generateFinancialInsights(transactions, prompt);
+        // 使用基本分析替代DeepSeek API调用
+        Map<String, Object> analysis = analyzeSpendingPattern(transactions);
+        List<String> suggestions = generateBasicSavingsSuggestions(analysis);
+        
+        StringBuilder insights = new StringBuilder();
+        insights.append("财务分析报告:\n\n");
+        
+        // 添加基本财务指标
+        BigDecimal totalSpent = (BigDecimal) analysis.get("totalSpent");
+        BigDecimal dailyAverage = (BigDecimal) analysis.get("dailyAverage");
+        String topCategory = (String) analysis.get("topCategory");
+        
+        insights.append("您在 ").append(topCategory).append(" 类别上的支出最高。\n");
+        insights.append("平均每日支出为 ¥").append(dailyAverage.setScale(2, RoundingMode.HALF_UP)).append("。\n\n");
+        
+        // 添加建议
+        insights.append("建议:\n");
+        for (String suggestion : suggestions) {
+            insights.append("- ").append(suggestion).append("\n");
+        }
+        
+        return insights.toString();
     }
     
     /**
-     * Generates personalized financial analysis and advice using DeepSeek (with custom prompt)
-     * @param transactions list of transactions
-     * @param customPrompt custom prompt/question
-     * @return generated financial analysis and advice
+     * Generate financial insights from a custom prompt
      */
-    public String generateFinancialInsights(List<Transaction> transactions, String customPrompt) {
-        try {
-            if (transactions.isEmpty()) {
-                return "Not enough transaction data for analysis.";
-            }
-            
-            // Prepare transaction data summary
-            Map<String, Object> analysis = analyzeSpendingPattern(transactions);
-            
-            String transactionSummary = String.format(
-                "User has %d transactions, with total spending of %s. The highest spending category is %s, with a daily average of %s.",
-                transactions.size(),
-                analysis.get("totalSpent"),
-                analysis.get("topCategory"),
-                analysis.get("dailyAverage")
-            );
-            
-            // Build final prompt
-            String finalPrompt = customPrompt + "\n\n" + transactionSummary + 
-                               "\n\nPlease provide detailed analysis and practical recommendations. Answer in English with clear organization.";
-            
-            // Try using DeepSeek API
-            try {
-                return callDeepSeekForInsights(finalPrompt);
-            } catch (Exception e) {
-                logger.warn("DeepSeek API call failed, falling back to basic analysis: {}", e.getMessage());
-                // If DeepSeek API call fails, fall back to basic analysis
-                List<String> suggestions = generateBasicSavingsSuggestions(analysis);
-                return String.join("\n\n", suggestions);
-            }
-        } catch (Exception e) {
-            logger.error("Error generating financial insights: {}", e.getMessage());
-            return "Error generating financial analysis: " + e.getMessage();
-        }
-    }
-    
-    /**
-     * Calls DeepSeek API for financial insights based on a user message
-     * 
-     * @param userMessage The user's message
-     * @return AI-generated response
-     * @throws IOException If an error occurs during API call
-     * @throws InterruptedException If the API call is interrupted
-     */
-    private String callDeepSeekForInsights(String userMessage) throws IOException, InterruptedException {
-        String systemPrompt = "You are a professional financial analyst and advisor. Only answer questions related to finance, investments, budgeting, savings, and other financial topics. " +
-                "If a user asks about non-financial topics, politely remind them that you can only answer finance-related questions. " +
-                "Provide useful and accurate financial advice using clear and understandable language. Always base your analysis on the data provided by the user. " +
-                "If questions involve budget data, refer to the information in budget.csv file. If questions involve bill data, refer to the information in bills.csv file.";
-
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", "deepseek-chat");
+    public String generateFinancialInsights(String customPrompt) {
+        // 提供固定的财务洞察而不是调用API
+        StringBuilder insights = new StringBuilder();
         
-        List<Map<String, String>> messages = new ArrayList<>();
-        messages.add(Map.of("role", "system", "content", systemPrompt));
-        messages.add(Map.of("role", "user", "content", userMessage));
+        insights.append("财务分析:\n\n");
+        insights.append("根据您的财务数据，我们建议考虑以下方面的改进:\n");
+        insights.append("1. 创建应急基金：建立相当于3-6个月日常开支的储备金。\n");
+        insights.append("2. 制定详细预算：跟踪每月支出，找出可以削减的领域。\n");
+        insights.append("3. 优化开支结构：尽量将至少20%的收入用于储蓄和投资。\n");
+        insights.append("4. 审查固定支出：定期检查各种订阅服务和账单，取消不必要的支出。\n");
+        insights.append("5. 设立自动储蓄：每次发薪日自动转移一部分资金到储蓄账户。\n");
         
-        requestBody.put("messages", messages);
-        requestBody.put("temperature", 0.3); // Lower temperature for more deterministic answers
-        requestBody.put("max_tokens", 1000); // Increase max tokens for more complete answers
-        
-        String requestBodyJson = new ObjectMapper().writeValueAsString(requestBody);
-        
-        // Implement retry logic
-        int maxRetries = 2;
-        int retryCount = 0;
-        HttpResponse<String> response = null;
-        
-        while (retryCount <= maxRetries) {
-            try {
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(DEEPSEEK_API_URL))
-                        .header("Content-Type", "application/json")
-                        .header("Authorization", "Bearer " + DEEPSEEK_API_KEY)
-                        .POST(HttpRequest.BodyPublishers.ofString(requestBodyJson))
-                        .timeout(Duration.ofSeconds(30)) // Set 30 second timeout
-                        .build();
-        
-                response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                
-                if (response.statusCode() == 200) {
-                    break; // If successful, exit retry loop
-                } else if (response.statusCode() == 429 || response.statusCode() == 500) {
-                    // If rate limited or server error, retry
-                    retryCount++;
-                    if (retryCount <= maxRetries) {
-                        logger.warn("API request failed (status code: {}), retrying attempt {}", response.statusCode(), retryCount);
-                        Thread.sleep(1000 * retryCount); // Exponential backoff retry
-                    }
-                } else {
-                    // For other errors, throw exception directly
-                    logger.error("API returned error: {} - {}", response.statusCode(), response.body());
-                    throw new IOException("API error: " + response.statusCode() + " - " + response.body());
-                }
-            } catch (IOException | InterruptedException e) {
-                retryCount++;
-                if (retryCount <= maxRetries) {
-                    logger.warn("API request failed, retrying attempt {}: {}", retryCount, e.getMessage());
-                    Thread.sleep(1000 * retryCount); // Exponential backoff retry
-                } else {
-                    throw e; // Retry count exhausted, throw exception
-                }
-            }
-        }
-        
-        if (response == null || response.statusCode() != 200) {
-            throw new IOException("API request failed after " + maxRetries + " retries");
-        }
-
-        try {
-            JsonNode rootNode = new ObjectMapper().readTree(response.body());
-            if (rootNode.has("choices") && rootNode.get("choices").isArray() && rootNode.get("choices").size() > 0) {
-                JsonNode firstChoice = rootNode.get("choices").get(0);
-                if (firstChoice.has("message") && firstChoice.get("message").has("content")) {
-                    return firstChoice.get("message").get("content").asText();
-                }
-            }
-            logger.error("Unexpected API response format: {}", response.body());
-            throw new IOException("Unexpected API response format");
-        } catch (Exception e) {
-            logger.error("Error parsing API response: {}", e.getMessage());
-            throw new IOException("Error parsing API response: " + e.getMessage());
-        }
+        return insights.toString();
     }
 
     /**
@@ -395,112 +246,87 @@ public class AIService {
     }
 
     /**
-     * Generates financial insights based on a user message.
-     * This method is used by the AIPanel for direct chatting functionality.
-     *
-     * @param userMessage The message from the user
-     * @return AI-generated financial insights or a fallback message if the API key is not configured
-     */
-    public String generateFinancialInsights(String userMessage) {
-        if (DEEPSEEK_API_KEY == null || DEEPSEEK_API_KEY.isEmpty() || DEEPSEEK_API_KEY.equals("your_api_key_here")) {
-            logger.warn("DeepSeek API key not configured. Using fallback message.");
-            return "Unable to process your request as the AI service is not configured. Please add your DeepSeek API key in the settings.";
-        }
-
-        try {
-            return callDeepSeekForInsights(userMessage);
-        } catch (Exception e) {
-            logger.error("Error generating financial insights: {}", e.getMessage());
-            String errorMessage = "Sorry, I encountered an error while processing your request. Please try again later.";
-            
-            // If it's a specific API error, provide more detailed feedback
-            if (e.getMessage().contains("API error")) {
-                errorMessage += "\n\nTechnical error: " + e.getMessage();
-            }
-            
-            return errorMessage;
-        }
-    }
-
-    /**
-     * Calculates a financial health score based on income, expenses, and savings.
-     * The score is on a scale of 0 to 100, where:
-     * - 90-100: Excellent financial health
-     * - 75-89: Good financial health
-     * - 60-74: Average financial health
-     * - 40-59: Below average financial health
-     * - 0-39: Poor financial health
-     * 
-     * @param transactions List of transactions to analyze
-     * @return A map containing the score and recommendations
+     * Calculates financial health score based on transaction data
      */
     public Map<String, Object> calculateFinancialHealthScore(List<Transaction> transactions) {
         Map<String, Object> result = new HashMap<>();
         
-        if (transactions == null || transactions.isEmpty()) {
-            result.put("score", 0);
-            result.put("category", "Insufficient Data");
-            result.put("recommendations", Collections.singletonList("Not enough transaction data to calculate a financial health score."));
-            return result;
-        }
+        // Calculate income and expenses
+        BigDecimal totalIncome = transactions.stream()
+            .filter(t -> t.getType() == TransactionType.INCOME)
+            .map(Transaction::getAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
         
-        // Calculate total income and expenses
-        BigDecimal totalIncome = BigDecimal.ZERO;
-        BigDecimal totalExpenses = BigDecimal.ZERO;
+        BigDecimal totalExpenses = transactions.stream()
+            .filter(t -> t.getType() == TransactionType.EXPENSE)
+            .map(Transaction::getAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
         
-        for (Transaction transaction : transactions) {
-            if (transaction.getType() == TransactionType.INCOME) {
-                totalIncome = totalIncome.add(transaction.getAmount());
-            } else if (transaction.getType() == TransactionType.EXPENSE) {
-                totalExpenses = totalExpenses.add(transaction.getAmount());
-            }
-        }
-        
-        // Calculate metrics
         BigDecimal netSavings = totalIncome.subtract(totalExpenses);
+        
+        // Calculate savings rate
         BigDecimal savingsRate = BigDecimal.ZERO;
         if (totalIncome.compareTo(BigDecimal.ZERO) > 0) {
-            savingsRate = netSavings.divide(totalIncome, 4, BigDecimal.ROUND_HALF_UP)
-                               .multiply(new BigDecimal("100"));
+            savingsRate = netSavings.multiply(new BigDecimal("100"))
+                .divide(totalIncome, 2, RoundingMode.HALF_UP);
         }
         
-        // Calculate expense to income ratio
-        BigDecimal expenseToIncomeRatio = BigDecimal.ONE;
+        // Calculate expense-to-income ratio
+        BigDecimal expenseToIncomeRatio = BigDecimal.ONE; // Default to 1 (100%)
         if (totalIncome.compareTo(BigDecimal.ZERO) > 0) {
-            expenseToIncomeRatio = totalExpenses.divide(totalIncome, 4, BigDecimal.ROUND_HALF_UP);
+            expenseToIncomeRatio = totalExpenses.divide(totalIncome, 2, RoundingMode.HALF_UP);
         }
         
-        // Calculate score components
-        int savingsComponent = calculateSavingsComponent(savingsRate);
-        int expenseRatioComponent = calculateExpenseRatioComponent(expenseToIncomeRatio);
-        int diversificationComponent = calculateDiversificationComponent(transactions);
+        // Basic score calculation based on savings rate
+        int savingsComponent = 0;
+        if (savingsRate.compareTo(BigDecimal.ZERO) > 0) {
+            savingsComponent = Math.min(50, savingsRate.intValue());
+        }
         
-        // Calculate final score (weighted average)
-        int finalScore = (int) (savingsComponent * 0.5 + expenseRatioComponent * 0.3 + diversificationComponent * 0.2);
-        finalScore = Math.max(0, Math.min(100, finalScore)); // Ensure score is between 0 and 100
+        // Score based on expense ratio (lower is better)
+        int expenseComponent = 0;
+        if (expenseToIncomeRatio.compareTo(BigDecimal.ONE) <= 0) {
+            expenseComponent = (int)(50 * (1 - expenseToIncomeRatio.doubleValue()));
+        }
         
-        // Determine score category
+        // Final score combines both components
+        int finalScore = savingsComponent + expenseComponent;
+        
+        // Determine category based on score
         String category;
-        if (finalScore >= 90) {
+        if (finalScore >= 80) {
             category = "Excellent";
-        } else if (finalScore >= 75) {
-            category = "Good";
         } else if (finalScore >= 60) {
-            category = "Average";
+            category = "Good";
         } else if (finalScore >= 40) {
-            category = "Below Average";
+            category = "Fair";
+        } else if (finalScore >= 20) {
+            category = "Needs Improvement";
         } else {
-            category = "Poor";
+            category = "Critical";
         }
         
-        // Generate recommendations
-        List<String> recommendations = generateFinancialHealthRecommendations(
-                savingsRate.doubleValue(), 
-                expenseToIncomeRatio.doubleValue(),
-                diversificationComponent,
-                transactions);
+        // Generate recommendations based on financial metrics
+        List<String> recommendations = new ArrayList<>();
         
-        // Prepare result
+        if (savingsRate.compareTo(new BigDecimal("20")) < 0) {
+            recommendations.add("增加储蓄率至少达到20%，以确保长期财务安全");
+        }
+        
+        if (expenseToIncomeRatio.compareTo(new BigDecimal("0.8")) > 0) {
+            recommendations.add("降低支出与收入的比例到80%以下，避免财务紧张");
+        }
+        
+        if (netSavings.compareTo(BigDecimal.ZERO) <= 0) {
+            recommendations.add("紧急调整预算，确保收入大于支出，避免负现金流");
+        }
+        
+        // Add general recommendations
+        recommendations.add("建立相当于3-6个月生活费用的应急基金");
+        recommendations.add("定期检查账单和订阅服务，取消不必要的开支");
+        recommendations.add("考虑增加额外收入来源，提高整体财务稳定性");
+        
+        // Populate result map
         result.put("score", finalScore);
         result.put("category", category);
         result.put("savingsRate", savingsRate);
@@ -514,248 +340,45 @@ public class AIService {
     }
     
     /**
-     * Calculates the savings component of the financial health score.
-     * @param savingsRate The savings rate as a percentage
-     * @return A score between 0 and 100
-     */
-    private int calculateSavingsComponent(BigDecimal savingsRate) {
-        double rate = savingsRate.doubleValue();
-        
-        // Ideal savings rate is 20% or more
-        if (rate >= 20) {
-            return 100;
-        } else if (rate >= 15) {
-            return 90;
-        } else if (rate >= 10) {
-            return 80;
-        } else if (rate >= 5) {
-            return 60;
-        } else if (rate >= 0) {
-            return 40;
-        } else {
-            // Negative savings rate (spending more than earning)
-            return (int) Math.max(0, 40 + rate); // Decrease score for negative rates
-        }
-    }
-    
-    /**
-     * Calculates the expense ratio component of the financial health score.
-     * @param expenseToIncomeRatio The ratio of expenses to income
-     * @return A score between 0 and 100
-     */
-    private int calculateExpenseRatioComponent(BigDecimal expenseToIncomeRatio) {
-        double ratio = expenseToIncomeRatio.doubleValue();
-        
-        // Ideal ratio is 0.8 or less (spending 80% or less of income)
-        if (ratio <= 0.6) {
-            return 100;
-        } else if (ratio <= 0.7) {
-            return 90;
-        } else if (ratio <= 0.8) {
-            return 80;
-        } else if (ratio <= 0.9) {
-            return 60;
-        } else if (ratio <= 1.0) {
-            return 40;
-        } else {
-            // Spending more than earning
-            return (int) Math.max(0, 40 - (ratio - 1.0) * 40);
-        }
-    }
-    
-    /**
-     * Calculates the diversification component of the financial health score.
-     * @param transactions List of transactions to analyze
-     * @return A score between 0 and 100
-     */
-    private int calculateDiversificationComponent(List<Transaction> transactions) {
-        // Calculate category distribution
-        Map<String, BigDecimal> categoryTotals = transactions.stream()
-            .filter(t -> t.getType() == TransactionType.EXPENSE)
-            .collect(Collectors.groupingBy(
-                Transaction::getCategory,
-                Collectors.reducing(BigDecimal.ZERO, Transaction::getAmount, BigDecimal::add)
-            ));
-        
-        if (categoryTotals.isEmpty()) {
-            return 50; // Neutral score if no expense categories
-        }
-        
-        // Calculate total expenses
-        BigDecimal totalExpenses = categoryTotals.values().stream()
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
-        if (totalExpenses.compareTo(BigDecimal.ZERO) == 0) {
-            return 50; // Neutral score if no expenses
-        }
-        
-        // Calculate percentage for each category
-        List<Double> categoryPercentages = categoryTotals.values().stream()
-            .map(amount -> amount.divide(totalExpenses, 4, BigDecimal.ROUND_HALF_UP).doubleValue() * 100)
-            .collect(Collectors.toList());
-        
-        // Calculate standard deviation of percentages (lower is better - more evenly distributed)
-        double mean = categoryPercentages.stream().mapToDouble(Double::doubleValue).average().orElse(0);
-        double sumSquaredDiff = categoryPercentages.stream()
-            .mapToDouble(p -> Math.pow(p - mean, 2))
-            .sum();
-        double stdDev = Math.sqrt(sumSquaredDiff / categoryPercentages.size());
-        
-        // Convert standard deviation to a score (inverse relationship)
-        // A perfectly balanced budget would have stdDev = 0
-        // Typical range might be 0-50 for stdDev in realistic scenarios
-        int score = (int) Math.max(0, 100 - stdDev * 2);
-        
-        // Adjust for number of categories (more categories is better)
-        int categoryCount = categoryTotals.size();
-        int categoryBonus = Math.min(20, categoryCount * 4); // Up to 20 point bonus for 5+ categories
-        
-        return Math.min(100, score + categoryBonus);
-    }
-    
-    /**
-     * Generates personalized recommendations based on financial health analysis.
-     * 
-     * @param savingsRate The savings rate percentage
-     * @param expenseRatio The expense to income ratio
-     * @param diversificationScore The diversification component score
-     * @param transactions List of transactions for detailed analysis
-     * @return A list of specific recommendations
-     */
-    private List<String> generateFinancialHealthRecommendations(
-            double savingsRate, 
-            double expenseRatio, 
-            int diversificationScore,
-            List<Transaction> transactions) {
-        
-        List<String> recommendations = new ArrayList<>();
-        
-        // Savings recommendations
-        if (savingsRate < 0) {
-            recommendations.add("CRITICAL: You're spending more than you earn. Reduce expenses immediately to avoid debt accumulation.");
-        } else if (savingsRate < 5) {
-            recommendations.add("Your savings rate is very low. Aim to save at least 5-10% of your income.");
-        } else if (savingsRate < 10) {
-            recommendations.add("Consider increasing your savings rate to at least 10-15% for better financial security.");
-        } else if (savingsRate < 20) {
-            recommendations.add("Good savings rate. For long-term financial independence, try to increase savings to 20% or more.");
-        } else {
-            recommendations.add("Excellent savings rate! Continue maintaining this level for strong financial health.");
-        }
-        
-        // Expense ratio recommendations
-        if (expenseRatio > 1.0) {
-            recommendations.add("Your expenses exceed your income. Identify non-essential spending to reduce immediately.");
-        } else if (expenseRatio > 0.9) {
-            recommendations.add("Your expense ratio is very high. Look for ways to reduce expenses or increase income.");
-        } else if (expenseRatio > 0.8) {
-            recommendations.add("Try to reduce your expense-to-income ratio to below 80% for better financial stability.");
-        } else {
-            recommendations.add("Your expense-to-income ratio is well-managed. Continue monitoring to maintain this level.");
-        }
-        
-        // Diversification recommendations
-        if (diversificationScore < 50) {
-            recommendations.add("Your spending is concentrated in too few categories. A more balanced budget across different categories reduces financial risk.");
-        }
-        
-        // Category-specific recommendations
-        Map<String, BigDecimal> categoryTotals = transactions.stream()
-            .filter(t -> t.getType() == TransactionType.EXPENSE)
-            .collect(Collectors.groupingBy(
-                Transaction::getCategory,
-                Collectors.reducing(BigDecimal.ZERO, Transaction::getAmount, BigDecimal::add)
-            ));
-        
-        BigDecimal totalExpenses = categoryTotals.values().stream()
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-        
-        if (totalExpenses.compareTo(BigDecimal.ZERO) > 0) {
-            // Check for categories with excessive spending
-            for (Map.Entry<String, BigDecimal> entry : categoryTotals.entrySet()) {
-                String category = entry.getKey();
-                BigDecimal amount = entry.getValue();
-                BigDecimal percentage = amount.divide(totalExpenses, 4, BigDecimal.ROUND_HALF_UP)
-                                           .multiply(new BigDecimal("100"));
-                
-                // Category-specific thresholds for recommendations
-                if (category.equals("Food") && percentage.compareTo(new BigDecimal("30")) > 0) {
-                    recommendations.add("Your food expenses are high at " + percentage.setScale(1, BigDecimal.ROUND_HALF_UP) + 
-                                     "% of total spending. Consider meal planning or cooking at home more often.");
-                } else if (category.equals("Entertainment") && percentage.compareTo(new BigDecimal("15")) > 0) {
-                    recommendations.add("Entertainment expenses at " + percentage.setScale(1, BigDecimal.ROUND_HALF_UP) + 
-                                     "% may be reduced by finding lower-cost alternatives.");
-                } else if (category.equals("Shopping") && percentage.compareTo(new BigDecimal("20")) > 0) {
-                    recommendations.add("Shopping expenses are " + percentage.setScale(1, BigDecimal.ROUND_HALF_UP) + 
-                                     "% of your budget. Consider implementing a waiting period before non-essential purchases.");
-                }
-            }
-        }
-        
-        // Add some general recommendations if we don't have many specific ones
-        if (recommendations.size() < 3) {
-            recommendations.add("Establish an emergency fund with 3-6 months of essential expenses.");
-            recommendations.add("Review and optimize your recurring subscriptions and bills regularly.");
-        }
-        
-        return recommendations;
-    }
-    
-    /**
-     * Analyzes financial health and generates a comprehensive report with DeepSeek API.
-     * 
-     * @param transactions List of transactions to analyze
-     * @return A detailed financial health report
+     * Generates financial health report based on transaction data
      */
     public String generateFinancialHealthReport(List<Transaction> transactions) {
-        try {
-            Map<String, Object> healthScore = calculateFinancialHealthScore(transactions);
-            
-            // Format the score data for the prompt
-            int score = (int) healthScore.get("score");
-            String category = (String) healthScore.get("category");
-            BigDecimal savingsRate = (BigDecimal) healthScore.get("savingsRate");
-            BigDecimal expenseRatio = (BigDecimal) healthScore.get("expenseToIncomeRatio");
-            @SuppressWarnings("unchecked")
-            List<String> recommendations = (List<String>) healthScore.get("recommendations");
-            
-            // Create detailed prompt
-            String prompt = String.format(
-                "Generate a comprehensive financial health report for a user with the following metrics:\n" +
-                "- Financial Health Score: %d/100 (%s)\n" +
-                "- Savings Rate: %.1f%%\n" +
-                "- Expense-to-Income Ratio: %.2f\n\n" +
-                "Initial recommendations based on analysis:\n%s\n\n" +
-                "Please provide a detailed assessment of their financial health, explaining the score and offering practical, " +
-                "actionable advice for improvement. Include specific strategies for building emergency savings, reducing debt, " +
-                "optimizing spending patterns, and improving long-term financial stability.",
-                score, category, savingsRate.doubleValue(), expenseRatio.doubleValue(),
-                String.join("\n", recommendations)
-            );
-            
-            // Call the AI service
-            try {
-                return callDeepSeekForInsights(prompt);
-            } catch (Exception e) {
-                logger.warn("DeepSeek API call failed for financial health report: {}", e.getMessage());
-                
-                // If API call fails, return a basic report
-                StringBuilder report = new StringBuilder();
-                report.append("# Financial Health Report\n\n");
-                report.append(String.format("Your Financial Health Score: %d/100 (%s)\n\n", score, category));
-                report.append(String.format("Savings Rate: %.1f%%\n", savingsRate.doubleValue()));
-                report.append(String.format("Expense-to-Income Ratio: %.2f\n\n", expenseRatio.doubleValue()));
-                report.append("## Recommendations\n\n");
-                
-                for (String recommendation : recommendations) {
-                    report.append("- ").append(recommendation).append("\n");
-                }
-                
-                return report.toString();
-            }
-        } catch (Exception e) {
-            logger.error("Error generating financial health report: {}", e.getMessage());
-            return "Unable to generate financial health report due to an error: " + e.getMessage();
+        Map<String, Object> healthScore = calculateFinancialHealthScore(transactions);
+        
+        // 创建基本的财务健康报告
+        int score = (int) healthScore.get("score");
+        String category = (String) healthScore.get("category");
+        BigDecimal savingsRate = (BigDecimal) healthScore.get("savingsRate");
+        BigDecimal expenseRatio = (BigDecimal) healthScore.get("expenseToIncomeRatio");
+        
+        @SuppressWarnings("unchecked")
+        List<String> recommendations = (List<String>) healthScore.get("recommendations");
+        
+        // 生成报告
+        StringBuilder report = new StringBuilder();
+        report.append("# 财务健康报告\n\n");
+        report.append(String.format("您的财务健康评分: %d/100 (%s)\n\n", score, category));
+        report.append(String.format("储蓄率: %.1f%%\n", savingsRate.doubleValue()));
+        report.append(String.format("支出占收入比例: %.2f\n\n", expenseRatio.doubleValue()));
+        
+        report.append("## 分析\n\n");
+        if (score >= 80) {
+            report.append("您的财务状况非常健康。您有良好的储蓄习惯，支出管理得当。继续保持这些良好习惯，将帮助您实现长期财务目标。\n\n");
+        } else if (score >= 60) {
+            report.append("您的财务状况良好，但仍有改进空间。增加储蓄或减少非必要支出可以进一步提高您的财务健康。\n\n");
+        } else if (score >= 40) {
+            report.append("您的财务状况一般，需要注意改进。建议审视您的支出模式，寻找可以削减的领域，并增加储蓄。\n\n");
+        } else if (score >= 20) {
+            report.append("您的财务状况需要显著改善。优先考虑减少支出，增加储蓄，并可能需要寻求额外收入来源。\n\n");
+        } else {
+            report.append("您的财务状况处于危急水平。需要立即采取行动减少支出，重新规划预算，以避免更严重的财务问题。\n\n");
         }
+        
+        report.append("## 建议\n\n");
+        for (String recommendation : recommendations) {
+            report.append("- ").append(recommendation).append("\n");
+        }
+        
+        return report.toString();
     }
 } 

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FinanceTrackerApp.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">finance-tracker</a> &gt; <a href="index.source.html" class="el_package">com.group78.financetracker</a> &gt; <span class="el_source">FinanceTrackerApp.java</span></div><h1>FinanceTrackerApp.java</h1><pre class="source lang-java linenums">package com.group78.financetracker;
+
+import com.formdev.flatlaf.FlatLightLaf;
+import com.group78.financetracker.ui.MainFrame;
+
+import javax.swing.*;
+
+<span class="nc" id="L8">public class FinanceTrackerApp {</span>
+    public static void main(String[] args) {
+        // Set modern UI look and feel
+<span class="nc" id="L11">        FlatLightLaf.setup();</span>
+        
+        // Run GUI in EDT
+<span class="nc" id="L14">        SwingUtilities.invokeLater(() -&gt; {</span>
+            try {
+<span class="nc" id="L16">                MainFrame mainFrame = new MainFrame();</span>
+<span class="nc" id="L17">                mainFrame.setVisible(true);</span>
+<span class="nc" id="L18">            } catch (Exception e) {</span>
+<span class="nc" id="L19">                e.printStackTrace();</span>
+<span class="nc" id="L20">                JOptionPane.showMessageDialog(null, </span>
+<span class="nc" id="L21">                    &quot;Error starting application: &quot; + e.getMessage(),</span>
+                    &quot;Error&quot;,
+                    JOptionPane.ERROR_MESSAGE);
+<span class="nc" id="L24">            }</span>
+<span class="nc" id="L25">        });</span>
+<span class="nc" id="L26">    }</span>
+} 
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

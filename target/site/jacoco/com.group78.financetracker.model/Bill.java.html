@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Bill.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">finance-tracker</a> &gt; <a href="index.source.html" class="el_package">com.group78.financetracker.model</a> &gt; <span class="el_source">Bill.java</span></div><h1>Bill.java</h1><pre class="source lang-java linenums">package com.group78.financetracker.model;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+
+public class Bill {
+    private String id;
+    private String name;
+    private BigDecimal amount;
+    private LocalDate dueDate;
+    private String paymentMethod;
+    private boolean emailNotification;
+    private boolean pushNotification;
+    private String status;
+
+    public Bill(String id, String name, BigDecimal amount, LocalDate dueDate, 
+<span class="fc" id="L18">                String paymentMethod, boolean emailNotification, boolean pushNotification) {</span>
+<span class="fc" id="L19">        this.id = id;</span>
+<span class="fc" id="L20">        this.name = name;</span>
+<span class="fc" id="L21">        this.amount = amount;</span>
+<span class="fc" id="L22">        this.dueDate = dueDate;</span>
+<span class="fc" id="L23">        this.paymentMethod = paymentMethod;</span>
+<span class="fc" id="L24">        this.emailNotification = emailNotification;</span>
+<span class="fc" id="L25">        this.pushNotification = pushNotification;</span>
+<span class="fc" id="L26">        updateStatus();</span>
+<span class="fc" id="L27">    }</span>
+
+    public void updateStatus() {
+<span class="fc" id="L30">        LocalDate today = LocalDate.now();</span>
+<span class="fc" id="L31">        long daysUntilDue = ChronoUnit.DAYS.between(today, dueDate);</span>
+        
+<span class="fc bfc" id="L33" title="All 2 branches covered.">        if (dueDate.isBefore(today)) {</span>
+<span class="fc" id="L34">            this.status = &quot;Overdue&quot;;</span>
+<span class="fc bfc" id="L35" title="All 2 branches covered.">        } else if (daysUntilDue &lt;= 3) {</span>
+<span class="fc" id="L36">            this.status = &quot;Due Soon&quot;;</span>
+<span class="pc bpc" id="L37" title="1 of 2 branches missed.">        } else if (daysUntilDue &lt;= 7) {</span>
+<span class="nc" id="L38">            this.status = &quot;Upcoming&quot;;</span>
+        } else {
+<span class="fc" id="L40">            this.status = &quot;Normal&quot;;</span>
+        }
+<span class="fc" id="L42">    }</span>
+
+    public String getStatusDescription() {
+<span class="fc" id="L45">        LocalDate today = LocalDate.now();</span>
+<span class="fc" id="L46">        long daysUntilDue = ChronoUnit.DAYS.between(today, dueDate);</span>
+        
+<span class="fc bfc" id="L48" title="All 2 branches covered.">        if (dueDate.isBefore(today)) {</span>
+<span class="fc" id="L49">            return &quot;Overdue since &quot; + dueDate.toString();</span>
+<span class="pc bpc" id="L50" title="1 of 2 branches missed.">        } else if (daysUntilDue == 0) {</span>
+<span class="nc" id="L51">            return &quot;Due today&quot;;</span>
+<span class="pc bpc" id="L52" title="1 of 2 branches missed.">        } else if (daysUntilDue == 1) {</span>
+<span class="nc" id="L53">            return &quot;Due tomorrow&quot;;</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">        } else if (daysUntilDue &lt;= 7) {</span>
+<span class="fc" id="L55">            return &quot;Due in &quot; + daysUntilDue + &quot; days&quot;;</span>
+        } else {
+<span class="fc" id="L57">            return &quot;Due on &quot; + dueDate.toString();</span>
+        }
+    }
+
+    // Getters
+<span class="fc" id="L62">    public String getId() { return id; }</span>
+<span class="fc" id="L63">    public String getName() { return name; }</span>
+<span class="fc" id="L64">    public BigDecimal getAmount() { return amount; }</span>
+<span class="fc" id="L65">    public LocalDate getDueDate() { return dueDate; }</span>
+<span class="fc" id="L66">    public String getPaymentMethod() { return paymentMethod; }</span>
+<span class="fc" id="L67">    public boolean hasEmailNotification() { return emailNotification; }</span>
+<span class="fc" id="L68">    public boolean hasPushNotification() { return pushNotification; }</span>
+<span class="fc" id="L69">    public String getStatus() { return status; }</span>
+
+    // Setters
+<span class="fc" id="L72">    public void setId(String id) { this.id = id; }</span>
+<span class="fc" id="L73">    public void setName(String name) { this.name = name; }</span>
+<span class="fc" id="L74">    public void setAmount(BigDecimal amount) { this.amount = amount; }</span>
+    public void setDueDate(LocalDate dueDate) { 
+<span class="nc" id="L76">        this.dueDate = dueDate;</span>
+<span class="nc" id="L77">        updateStatus();</span>
+<span class="nc" id="L78">    }</span>
+<span class="nc" id="L79">    public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }</span>
+<span class="nc" id="L80">    public void setEmailNotification(boolean emailNotification) { this.emailNotification = emailNotification; }</span>
+<span class="nc" id="L81">    public void setPushNotification(boolean pushNotification) { this.pushNotification = pushNotification; }</span>
+} 
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

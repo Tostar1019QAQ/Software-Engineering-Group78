@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MainFrame.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">finance-tracker</a> &gt; <a href="index.source.html" class="el_package">com.group78.financetracker.ui</a> &gt; <span class="el_source">MainFrame.java</span></div><h1>MainFrame.java</h1><pre class="source lang-java linenums">package com.group78.financetracker.ui;
+
+import com.group78.financetracker.service.AIService;
+import com.group78.financetracker.service.ImportService;
+import com.group78.financetracker.service.TransactionService;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+public class MainFrame extends JFrame {
+    private JPanel contentPanel;
+    private JPanel dashboardPanel;
+    private JPanel budgetPanel;
+    private JPanel billsPanel;
+    private JPanel importPanel;
+    private JPanel aiAnalysisPanel;
+    private JPanel navigationPanel;
+    private CardLayout cardLayout;
+    
+    // 服务实例
+    private AIService aiService;
+    private ImportService importService;
+    private TransactionService transactionService;
+
+<span class="nc" id="L26">    public MainFrame() {</span>
+        // 初始化服务
+<span class="nc" id="L28">        initializeServices();</span>
+<span class="nc" id="L29">        initializeFrame();</span>
+<span class="nc" id="L30">        createPanels();</span>
+<span class="nc" id="L31">        createNavigationPanel();</span>
+<span class="nc" id="L32">        layoutComponents();</span>
+<span class="nc" id="L33">    }</span>
+    
+    private void initializeServices() {
+<span class="nc" id="L36">        aiService = new AIService();</span>
+<span class="nc" id="L37">        importService = new ImportService();</span>
+<span class="nc" id="L38">        transactionService = new TransactionService(importService);</span>
+<span class="nc" id="L39">    }</span>
+
+    private void initializeFrame() {
+<span class="nc" id="L42">        setTitle(&quot;Personal Finance Tracker&quot;);</span>
+<span class="nc" id="L43">        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);</span>
+<span class="nc" id="L44">        setSize(1200, 800);</span>
+<span class="nc" id="L45">        setLocationRelativeTo(null);</span>
+<span class="nc" id="L46">    }</span>
+
+    private void createPanels() {
+        // Create card layout for switching panels
+<span class="nc" id="L50">        cardLayout = new CardLayout();</span>
+<span class="nc" id="L51">        contentPanel = new JPanel(cardLayout);</span>
+        
+        // Create all panels
+<span class="nc" id="L54">        dashboardPanel = new DashboardPanel();</span>
+<span class="nc" id="L55">        budgetPanel = new BudgetPanel(cardLayout, contentPanel);</span>
+<span class="nc" id="L56">        billsPanel = new BillsPanel(cardLayout, contentPanel);</span>
+<span class="nc" id="L57">        importPanel = new ImportPanel(cardLayout, contentPanel);  // Use the new ImportPanel</span>
+<span class="nc" id="L58">        aiAnalysisPanel = new AIPanel(aiService, transactionService); // Use the new AIPanel</span>
+        
+        // Add all panels to card layout
+<span class="nc" id="L61">        contentPanel.add(dashboardPanel, &quot;Dashboard&quot;);</span>
+<span class="nc" id="L62">        contentPanel.add(budgetPanel, &quot;Budget&quot;);</span>
+<span class="nc" id="L63">        contentPanel.add(billsPanel, &quot;Bills&quot;);</span>
+<span class="nc" id="L64">        contentPanel.add(importPanel, &quot;Import&quot;);</span>
+<span class="nc" id="L65">        contentPanel.add(aiAnalysisPanel, &quot;AI Analysis&quot;);</span>
+<span class="nc" id="L66">    }</span>
+
+    private void createNavigationPanel() {
+<span class="nc" id="L69">        navigationPanel = new JPanel();</span>
+<span class="nc" id="L70">        navigationPanel.setLayout(new BoxLayout(navigationPanel, BoxLayout.Y_AXIS));</span>
+<span class="nc" id="L71">        navigationPanel.setBackground(new Color(74, 107, 255));</span>
+<span class="nc" id="L72">        navigationPanel.setPreferredSize(new Dimension(200, 0));</span>
+        
+        // Add navigation buttons
+<span class="nc" id="L75">        addNavigationButton(&quot;Dashboard&quot;, &quot;📊&quot;, &quot;Dashboard&quot;);</span>
+<span class="nc" id="L76">        addNavigationButton(&quot;Budget&quot;, &quot;💰&quot;, &quot;Budget&quot;);</span>
+<span class="nc" id="L77">        addNavigationButton(&quot;Bills&quot;, &quot;⏰&quot;, &quot;Bills&quot;);</span>
+<span class="nc" id="L78">        addNavigationButton(&quot;Import&quot;, &quot;📥&quot;, &quot;Import&quot;);</span>
+<span class="nc" id="L79">        addNavigationButton(&quot;AI Analysis&quot;, &quot;🤖&quot;, &quot;AI Analysis&quot;);</span>
+<span class="nc" id="L80">    }</span>
+
+    private void addNavigationButton(String text, String icon, String cardName) {
+<span class="nc" id="L83">        JButton button = new JButton(icon + &quot; &quot; + text);</span>
+<span class="nc" id="L84">        button.setAlignmentX(Component.CENTER_ALIGNMENT);</span>
+<span class="nc" id="L85">        button.setMaximumSize(new Dimension(180, 40));</span>
+<span class="nc" id="L86">        button.setMargin(new Insets(10, 15, 10, 15));</span>
+        
+        // Set button style
+<span class="nc" id="L89">        button.setBackground(new Color(74, 107, 255));</span>
+<span class="nc" id="L90">        button.setForeground(Color.WHITE);</span>
+<span class="nc" id="L91">        button.setFocusPainted(false);</span>
+<span class="nc" id="L92">        button.setBorderPainted(false);</span>
+<span class="nc" id="L93">        button.setVerticalAlignment(SwingConstants.CENTER);</span>
+        
+        // Add hover effect
+<span class="nc" id="L96">        button.addMouseListener(new java.awt.event.MouseAdapter() {</span>
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+<span class="nc" id="L98">                button.setBackground(new Color(90, 120, 255));</span>
+<span class="nc" id="L99">            }</span>
+
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+<span class="nc" id="L102">                button.setBackground(new Color(74, 107, 255));</span>
+<span class="nc" id="L103">            }</span>
+        });
+        
+        // Add click event
+<span class="nc" id="L107">        button.addActionListener(e -&gt; cardLayout.show(contentPanel, cardName));</span>
+        
+<span class="nc" id="L109">        navigationPanel.add(Box.createRigidArea(new Dimension(0, 10)));</span>
+<span class="nc" id="L110">        navigationPanel.add(button);</span>
+<span class="nc" id="L111">    }</span>
+
+    private void layoutComponents() {
+<span class="nc" id="L114">        setLayout(new BorderLayout());</span>
+<span class="nc" id="L115">        add(navigationPanel, BorderLayout.WEST);</span>
+<span class="nc" id="L116">        add(contentPanel, BorderLayout.CENTER);</span>
+<span class="nc" id="L117">    }</span>
+} 
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

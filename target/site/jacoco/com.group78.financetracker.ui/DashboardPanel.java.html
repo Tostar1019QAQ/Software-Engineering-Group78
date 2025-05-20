@@ -1,0 +1,533 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DashboardPanel.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">finance-tracker</a> &gt; <a href="index.source.html" class="el_package">com.group78.financetracker.ui</a> &gt; <span class="el_source">DashboardPanel.java</span></div><h1>DashboardPanel.java</h1><pre class="source lang-java linenums">package com.group78.financetracker.ui;
+
+import com.group78.financetracker.model.Transaction;
+import com.group78.financetracker.service.BillService;
+import com.group78.financetracker.service.DashboardService;
+import com.group78.financetracker.service.ImportService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.PiePlot;
+import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.chart.renderer.category.BarRenderer;
+import org.jfree.data.category.DefaultCategoryDataset;
+import org.jfree.data.general.DefaultPieDataset;
+
+import javax.swing.*;
+import java.awt.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+
+public class DashboardPanel extends JPanel {
+<span class="nc" id="L36">    private static final Logger logger = LoggerFactory.getLogger(DashboardPanel.class);</span>
+    private final DashboardService dashboardService;
+    private final BillService billService;
+    private JPanel summaryPanel;
+    private JPanel chartPanel;
+    private JPanel actionPanel;
+    private JPanel headerPanel;
+
+    // Summary labels
+    private JLabel expensesValueLabel;
+    private JLabel budgetValueLabel;
+    private JLabel billsValueLabel;
+
+    // Charts
+    private ChartPanel spendingChartPanel;
+    private ChartPanel distributionChartPanel;
+
+    // Constants
+<span class="nc" id="L54">    private static final Color PRIMARY_COLOR = new Color(74, 107, 255);</span>
+<span class="nc" id="L55">    private static final Color BACKGROUND_COLOR = new Color(245, 247, 250);</span>
+<span class="nc" id="L56">    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern(&quot;MM/dd&quot;);</span>
+<span class="nc" id="L57">    private static final BigDecimal MONTHLY_BUDGET = new BigDecimal(&quot;13000.00&quot;);  // Fixed budget amount</span>
+
+<span class="nc" id="L59">    public DashboardPanel() {</span>
+<span class="nc" id="L60">        this.dashboardService = new DashboardService();</span>
+<span class="nc" id="L61">        this.billService = new BillService();</span>
+        
+<span class="nc" id="L63">        setLayout(new BorderLayout(20, 20));</span>
+<span class="nc" id="L64">        setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));</span>
+<span class="nc" id="L65">        setBackground(BACKGROUND_COLOR);</span>
+
+<span class="nc" id="L67">        createComponents();</span>
+<span class="nc" id="L68">        layoutComponents();</span>
+<span class="nc" id="L69">        updateDashboard();</span>
+<span class="nc" id="L70">    }</span>
+
+    private void createComponents() {
+        // Create header panel
+<span class="nc" id="L74">        headerPanel = createHeaderPanel();</span>
+        
+        // Create summary panel
+<span class="nc" id="L77">        summaryPanel = createSummaryPanel();</span>
+        
+        // Create chart panel
+<span class="nc" id="L80">        chartPanel = createChartPanel();</span>
+        
+        // Create action button panel
+<span class="nc" id="L83">        actionPanel = createActionPanel();</span>
+<span class="nc" id="L84">    }</span>
+
+    private void layoutComponents() {
+        // Add components to dashboard
+<span class="nc" id="L88">        add(headerPanel, BorderLayout.NORTH);</span>
+        
+<span class="nc" id="L90">        JPanel mainPanel = new JPanel(new BorderLayout(20, 20));</span>
+<span class="nc" id="L91">        mainPanel.setBackground(BACKGROUND_COLOR);</span>
+<span class="nc" id="L92">        mainPanel.add(summaryPanel, BorderLayout.NORTH);</span>
+<span class="nc" id="L93">        mainPanel.add(chartPanel, BorderLayout.CENTER);</span>
+<span class="nc" id="L94">        mainPanel.add(actionPanel, BorderLayout.SOUTH);</span>
+        
+<span class="nc" id="L96">        add(mainPanel, BorderLayout.CENTER);</span>
+<span class="nc" id="L97">    }</span>
+
+    private JPanel createHeaderPanel() {
+<span class="nc" id="L100">        JPanel header = new JPanel(new BorderLayout());</span>
+<span class="nc" id="L101">        header.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));</span>
+
+<span class="nc" id="L103">        JLabel titleLabel = new JLabel(&quot;Dashboard&quot;);</span>
+<span class="nc" id="L104">        titleLabel.setFont(new Font(&quot;Arial&quot;, Font.BOLD, 24));</span>
+        
+<span class="nc" id="L106">        JButton refreshButton = new JButton(&quot;↻ Refresh&quot;);</span>
+<span class="nc" id="L107">        refreshButton.setFocusPainted(false);</span>
+<span class="nc" id="L108">        refreshButton.addActionListener(e -&gt; {</span>
+<span class="nc" id="L109">            reloadData();</span>
+<span class="nc" id="L110">        });</span>
+        
+<span class="nc" id="L112">        header.add(titleLabel, BorderLayout.CENTER);</span>
+<span class="nc" id="L113">        header.add(refreshButton, BorderLayout.EAST);</span>
+        
+<span class="nc" id="L115">        return header;</span>
+    }
+
+    private void reloadData() {
+        // Get ImportService instance and reload data
+<span class="nc" id="L120">        ImportService importService = dashboardService.getImportService();</span>
+<span class="nc" id="L121">        importService.reloadDefaultData();</span>
+        
+        // Load budget data from file
+<span class="nc" id="L124">        loadBudgetDataFromFile();</span>
+        
+        // Reload bills data
+<span class="nc" id="L127">        billService.reloadBills();</span>
+        
+        // Load bills data from CSV file
+<span class="nc" id="L130">        loadBillsDataFromFile();</span>
+        
+        // Update all panels
+<span class="nc" id="L133">        updateDashboard();</span>
+<span class="nc" id="L134">    }</span>
+    
+    /**
+     * Loads budget data from the budget.csv file
+     */
+    private void loadBudgetDataFromFile() {
+        try {
+<span class="nc" id="L141">            File budgetFile = new File(&quot;data/budget.csv&quot;);</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">            if (!budgetFile.exists()) {</span>
+<span class="nc" id="L143">                logger.info(&quot;No budget data file found. Using default budget.&quot;);</span>
+<span class="nc" id="L144">                return;</span>
+            }
+            
+<span class="nc" id="L147">            try (FileReader reader = new FileReader(budgetFile);</span>
+<span class="nc" id="L148">                 CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT</span>
+<span class="nc" id="L149">                     .withFirstRecordAsHeader()</span>
+<span class="nc" id="L150">                     .withIgnoreHeaderCase()</span>
+<span class="nc" id="L151">                     .withTrim())) {</span>
+                
+<span class="nc" id="L153">                boolean firstRow = true;</span>
+                
+<span class="nc bnc" id="L155" title="All 2 branches missed.">                for (CSVRecord record : csvParser) {</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">                    if (firstRow) {</span>
+                        // First row contains total budget info
+<span class="nc" id="L158">                        String totalBudgetStr = record.get(&quot;TotalBudget&quot;);</span>
+<span class="nc" id="L159">                        String startDateStr = record.get(&quot;StartDate&quot;);</span>
+<span class="nc" id="L160">                        String endDateStr = record.get(&quot;EndDate&quot;);</span>
+                        
+<span class="nc bnc" id="L162" title="All 2 branches missed.">                        if (!totalBudgetStr.isEmpty()) {</span>
+<span class="nc" id="L163">                            BigDecimal totalBudget = new BigDecimal(totalBudgetStr);</span>
+                            
+<span class="nc bnc" id="L165" title="All 4 branches missed.">                            if (!startDateStr.isEmpty() &amp;&amp; !endDateStr.isEmpty()) {</span>
+<span class="nc" id="L166">                                LocalDate startDate = LocalDate.parse(startDateStr);</span>
+<span class="nc" id="L167">                                LocalDate endDate = LocalDate.parse(endDateStr);</span>
+                                
+                                // Update budget in DashboardService
+<span class="nc" id="L170">                                dashboardService.updateTotalBudget(totalBudget, startDate, endDate);</span>
+                            }
+                        }
+                        
+<span class="nc" id="L174">                        firstRow = false;</span>
+                    }
+<span class="nc" id="L176">                }</span>
+                
+<span class="nc" id="L178">                logger.info(&quot;Budget data loaded successfully&quot;);</span>
+            }
+            
+<span class="nc" id="L181">        } catch (Exception e) {</span>
+<span class="nc" id="L182">            logger.error(&quot;Failed to load budget data: {}&quot;, e.getMessage(), e);</span>
+<span class="nc" id="L183">        }</span>
+<span class="nc" id="L184">    }</span>
+
+    /**
+     * Loads bill data from the bills.csv file
+     */
+    private void loadBillsDataFromFile() {
+        try {
+<span class="nc" id="L191">            File billsFile = new File(&quot;data/bills.csv&quot;);</span>
+<span class="nc bnc" id="L192" title="All 2 branches missed.">            if (!billsFile.exists()) {</span>
+<span class="nc" id="L193">                logger.info(&quot;No bills data file found.&quot;);</span>
+<span class="nc" id="L194">                return;</span>
+            }
+            
+<span class="nc" id="L197">            logger.info(&quot;Loading bills data from CSV file: {}&quot;, billsFile.getAbsolutePath());</span>
+            
+            // Notify BillService to reload bill data
+<span class="nc" id="L200">            billService.reloadBills();</span>
+            
+<span class="nc" id="L202">            logger.info(&quot;Bills data loaded successfully&quot;);</span>
+            
+<span class="nc" id="L204">        } catch (Exception e) {</span>
+<span class="nc" id="L205">            logger.error(&quot;Failed to load bills data: {}&quot;, e.getMessage(), e);</span>
+<span class="nc" id="L206">        }</span>
+<span class="nc" id="L207">    }</span>
+
+    private JPanel createSummaryPanel() {
+<span class="nc" id="L210">        JPanel panel = new JPanel(new GridLayout(1, 3, 20, 0));</span>
+<span class="nc" id="L211">        panel.setOpaque(false);</span>
+
+        // Create summary cards with placeholder values
+<span class="nc" id="L214">        JPanel expensesCard = createSummaryCard(&quot;Monthly Expenses&quot;, &quot;¥0&quot;);</span>
+<span class="nc" id="L215">        JPanel budgetCard = createSummaryCard(&quot;Remaining Budget&quot;, &quot;¥0&quot;);</span>
+<span class="nc" id="L216">        JPanel billsCard = createSummaryCard(&quot;Pending Bills&quot;, &quot;0&quot;);</span>
+        
+        // Get the value labels for later updates
+<span class="nc" id="L219">        expensesValueLabel = (JLabel) expensesCard.getComponent(2);</span>
+<span class="nc" id="L220">        budgetValueLabel = (JLabel) budgetCard.getComponent(2);</span>
+<span class="nc" id="L221">        billsValueLabel = (JLabel) billsCard.getComponent(2);</span>
+
+        // Add cards to panel
+<span class="nc" id="L224">        panel.add(expensesCard);</span>
+<span class="nc" id="L225">        panel.add(budgetCard);</span>
+<span class="nc" id="L226">        panel.add(billsCard);</span>
+
+<span class="nc" id="L228">        return panel;</span>
+    }
+
+    private JPanel createSummaryCard(String title, String initialValue) {
+<span class="nc" id="L232">        JPanel card = new JPanel();</span>
+<span class="nc" id="L233">        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));</span>
+<span class="nc" id="L234">        card.setBackground(Color.WHITE);</span>
+<span class="nc" id="L235">        card.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));</span>
+
+<span class="nc" id="L237">        JLabel titleLabel = new JLabel(title);</span>
+<span class="nc" id="L238">        titleLabel.setForeground(new Color(102, 102, 102));</span>
+<span class="nc" id="L239">        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);</span>
+
+<span class="nc" id="L241">        JLabel valueLabel = new JLabel(initialValue);</span>
+<span class="nc" id="L242">        valueLabel.setFont(valueLabel.getFont().deriveFont(24f));</span>
+<span class="nc" id="L243">        valueLabel.setForeground(PRIMARY_COLOR);</span>
+<span class="nc" id="L244">        valueLabel.setAlignmentX(Component.LEFT_ALIGNMENT);</span>
+
+<span class="nc" id="L246">        card.add(titleLabel);</span>
+<span class="nc" id="L247">        card.add(Box.createRigidArea(new Dimension(0, 10)));</span>
+<span class="nc" id="L248">        card.add(valueLabel);</span>
+
+<span class="nc" id="L250">        return card;</span>
+    }
+
+    private JPanel createChartPanel() {
+<span class="nc" id="L254">        JPanel panel = new JPanel(new GridLayout(1, 2, 20, 0));</span>
+<span class="nc" id="L255">        panel.setOpaque(false);</span>
+
+        // Create spending chart
+<span class="nc" id="L258">        JFreeChart spendingChart = createSpendingChart();</span>
+<span class="nc" id="L259">        spendingChartPanel = new ChartPanel(spendingChart);</span>
+<span class="nc" id="L260">        spendingChartPanel.setPreferredSize(new Dimension(400, 300));</span>
+        
+        // Create distribution chart
+<span class="nc" id="L263">        JFreeChart distributionChart = createDistributionChart();</span>
+<span class="nc" id="L264">        distributionChartPanel = new ChartPanel(distributionChart);</span>
+<span class="nc" id="L265">        distributionChartPanel.setPreferredSize(new Dimension(400, 300));</span>
+        
+        // Create containers for charts
+<span class="nc" id="L268">        JPanel spendingContainer = createChartContainer(&quot;Last 7 Days Income &amp; Expenses&quot;, spendingChartPanel);</span>
+<span class="nc" id="L269">        JPanel distributionContainer = createChartContainer(&quot;Expense Distribution&quot;, distributionChartPanel);</span>
+
+<span class="nc" id="L271">        panel.add(spendingContainer);</span>
+<span class="nc" id="L272">        panel.add(distributionContainer);</span>
+
+<span class="nc" id="L274">        return panel;</span>
+    }
+
+    private JPanel createChartContainer(String title, JComponent chartComponent) {
+<span class="nc" id="L278">        JPanel container = new JPanel(new BorderLayout());</span>
+<span class="nc" id="L279">        container.setBackground(Color.WHITE);</span>
+<span class="nc" id="L280">        container.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));</span>
+
+<span class="nc" id="L282">        JLabel titleLabel = new JLabel(title);</span>
+<span class="nc" id="L283">        titleLabel.setForeground(PRIMARY_COLOR);</span>
+<span class="nc" id="L284">        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD));</span>
+
+<span class="nc" id="L286">        container.add(titleLabel, BorderLayout.NORTH);</span>
+<span class="nc" id="L287">        container.add(chartComponent, BorderLayout.CENTER);</span>
+
+<span class="nc" id="L289">        return container;</span>
+    }
+
+    private JFreeChart createSpendingChart() {
+<span class="nc" id="L293">        DefaultCategoryDataset dataset = new DefaultCategoryDataset();</span>
+        
+        // Add placeholder data (will be updated later)
+<span class="nc bnc" id="L296" title="All 2 branches missed.">        for (int i = 6; i &gt;= 0; i--) {</span>
+<span class="nc" id="L297">            String dateLabel = LocalDate.now().minusDays(i).format(DATE_FORMATTER);</span>
+<span class="nc" id="L298">            dataset.addValue(0, &quot;Expenses&quot;, dateLabel);</span>
+<span class="nc" id="L299">            dataset.addValue(0, &quot;Income&quot;, dateLabel);</span>
+        }
+        
+<span class="nc" id="L302">        JFreeChart chart = ChartFactory.createBarChart(</span>
+            null,                      // Chart title
+            &quot;Date&quot;,                    // X-Axis label
+            &quot;Amount (¥)&quot;,              // Y-Axis label
+            dataset,                   // Dataset
+            PlotOrientation.VERTICAL,  // Orientation
+            true,                      // Include legend
+            true,                      // Include tooltips
+            false                      // Include URLs
+        );
+        
+        // Customize chart
+<span class="nc" id="L314">        CategoryPlot plot = chart.getCategoryPlot();</span>
+<span class="nc" id="L315">        BarRenderer renderer = (BarRenderer) plot.getRenderer();</span>
+<span class="nc" id="L316">        renderer.setSeriesPaint(0, new Color(255, 99, 132)); // Expenses in red</span>
+<span class="nc" id="L317">        renderer.setSeriesPaint(1, new Color(75, 192, 192)); // Income in green</span>
+        
+<span class="nc" id="L319">        return chart;</span>
+    }
+
+    private JFreeChart createDistributionChart() {
+<span class="nc" id="L323">        DefaultPieDataset dataset = new DefaultPieDataset();</span>
+        
+        // Add placeholder data (will be updated later)
+<span class="nc" id="L326">        dataset.setValue(&quot;No Data&quot;, 1);</span>
+        
+<span class="nc" id="L328">        JFreeChart chart = ChartFactory.createPieChart(</span>
+            null,       // Chart title
+            dataset,    // Dataset
+            true,       // Include legend
+            true,       // Include tooltips
+            false       // Include URLs
+        );
+        
+        // Customize chart
+<span class="nc" id="L337">        PiePlot plot = (PiePlot) chart.getPlot();</span>
+<span class="nc" id="L338">        plot.setSectionPaint(&quot;No Data&quot;, Color.LIGHT_GRAY);</span>
+        
+<span class="nc" id="L340">        return chart;</span>
+    }
+
+    private JPanel createActionPanel() {
+<span class="nc" id="L344">        JPanel panel = new JPanel(new GridLayout(1, 1, 20, 0));</span>
+<span class="nc" id="L345">        panel.setOpaque(false);</span>
+
+        // Create an informational label instead of buttons
+<span class="nc" id="L348">        JLabel infoLabel = new JLabel(&quot;View bills and transactions to understand your financial status&quot;);</span>
+<span class="nc" id="L349">        infoLabel.setForeground(new Color(102, 102, 102));</span>
+<span class="nc" id="L350">        infoLabel.setHorizontalAlignment(SwingConstants.CENTER);</span>
+<span class="nc" id="L351">        infoLabel.setFont(new Font(&quot;Segoe UI&quot;, Font.ITALIC, 12));</span>
+        
+<span class="nc" id="L353">        panel.add(infoLabel);</span>
+
+<span class="nc" id="L355">        return panel;</span>
+    }
+    
+    public void updateDashboard() {
+<span class="nc" id="L359">        updateSummaryInfo();</span>
+<span class="nc" id="L360">        updateSpendingChart();</span>
+<span class="nc" id="L361">        updateDistributionChart();</span>
+<span class="nc" id="L362">    }</span>
+    
+    private void updateSummaryInfo() {
+        // Get real data
+<span class="nc" id="L366">        BigDecimal totalExpenses = dashboardService.getTotalExpenses();</span>
+        
+        // Get the latest number of pending bills
+<span class="nc" id="L369">        int pendingBillsCount = 0;</span>
+        try {
+<span class="nc" id="L371">            pendingBillsCount = billService.getUpcomingBills().size();</span>
+<span class="nc" id="L372">            logger.debug(&quot;Found {} pending bills&quot;, pendingBillsCount);</span>
+<span class="nc" id="L373">        } catch (Exception e) {</span>
+<span class="nc" id="L374">            logger.error(&quot;Error getting pending bills: {}&quot;, e.getMessage(), e);</span>
+<span class="nc" id="L375">        }</span>
+        
+        // Get budget from DashboardService
+<span class="nc" id="L378">        BigDecimal monthlyBudget = dashboardService.getTotalBudget();</span>
+        // If no budget is set, use the default value
+<span class="nc bnc" id="L380" title="All 2 branches missed.">        if (monthlyBudget.compareTo(BigDecimal.ZERO) == 0) {</span>
+<span class="nc" id="L381">            monthlyBudget = MONTHLY_BUDGET;</span>
+        }
+        
+<span class="nc" id="L384">        BigDecimal remainingBudget = monthlyBudget.subtract(totalExpenses);</span>
+        
+<span class="nc bnc" id="L386" title="All 2 branches missed.">        if (remainingBudget.compareTo(BigDecimal.ZERO) &lt; 0) {</span>
+<span class="nc" id="L387">            remainingBudget = BigDecimal.ZERO;</span>
+        }
+        
+        // Update labels
+<span class="nc" id="L391">        expensesValueLabel.setText(formatCurrency(totalExpenses));</span>
+<span class="nc" id="L392">        budgetValueLabel.setText(formatCurrency(remainingBudget));</span>
+<span class="nc" id="L393">        billsValueLabel.setText(String.valueOf(pendingBillsCount));</span>
+        
+        // Set color indication for pending bills - show in red if there are pending bills
+<span class="nc bnc" id="L396" title="All 2 branches missed.">        if (pendingBillsCount &gt; 0) {</span>
+<span class="nc" id="L397">            billsValueLabel.setForeground(new Color(255, 99, 132)); // Red</span>
+        } else {
+<span class="nc" id="L399">            billsValueLabel.setForeground(PRIMARY_COLOR); // Default color</span>
+        }
+<span class="nc" id="L401">    }</span>
+    
+    private void updateSpendingChart() {
+        // Get spending and income data for last 7 days
+<span class="nc" id="L405">        Map&lt;LocalDate, BigDecimal&gt; dailySpending = dashboardService.getDailySpending(7);</span>
+<span class="nc" id="L406">        Map&lt;LocalDate, BigDecimal&gt; dailyIncome = dashboardService.getDailyIncome(7);</span>
+        
+        // Log the data for debugging
+<span class="nc" id="L409">        logger.debug(&quot;Spending data for chart:&quot;);</span>
+<span class="nc bnc" id="L410" title="All 2 branches missed.">        for (Map.Entry&lt;LocalDate, BigDecimal&gt; entry : dailySpending.entrySet()) {</span>
+<span class="nc" id="L411">            logger.debug(&quot;{}: Expense={}, Income={}&quot;, </span>
+<span class="nc" id="L412">                       entry.getKey(), </span>
+<span class="nc" id="L413">                       entry.getValue(), </span>
+<span class="nc" id="L414">                       dailyIncome.get(entry.getKey()));</span>
+<span class="nc" id="L415">        }</span>
+        
+        // Update dataset
+<span class="nc" id="L418">        DefaultCategoryDataset dataset = new DefaultCategoryDataset();</span>
+        
+        // Add expenses and income data
+<span class="nc bnc" id="L421" title="All 2 branches missed.">        for (Map.Entry&lt;LocalDate, BigDecimal&gt; entry : dailySpending.entrySet()) {</span>
+<span class="nc" id="L422">            LocalDate date = entry.getKey();</span>
+<span class="nc" id="L423">            String dateLabel = date.format(DATE_FORMATTER);</span>
+<span class="nc" id="L424">            BigDecimal expense = entry.getValue();</span>
+<span class="nc" id="L425">            BigDecimal income = dailyIncome.get(date);</span>
+            
+<span class="nc" id="L427">            dataset.addValue(expense, &quot;Expenses&quot;, dateLabel);</span>
+<span class="nc" id="L428">            dataset.addValue(income, &quot;Income&quot;, dateLabel);</span>
+<span class="nc" id="L429">        }</span>
+        
+        // Update chart
+<span class="nc" id="L432">        JFreeChart chart = ChartFactory.createBarChart(</span>
+            null,                      // Chart title
+            &quot;Date&quot;,                    // X-Axis label
+            &quot;Amount (¥)&quot;,              // Y-Axis label
+            dataset,                   // Dataset
+            PlotOrientation.VERTICAL,  // Orientation
+            true,                      // Include legend
+            true,                      // Include tooltips
+            false                      // Include URLs
+        );
+        
+        // Customize chart
+<span class="nc" id="L444">        CategoryPlot plot = chart.getCategoryPlot();</span>
+<span class="nc" id="L445">        BarRenderer renderer = (BarRenderer) plot.getRenderer();</span>
+<span class="nc" id="L446">        renderer.setSeriesPaint(0, new Color(255, 99, 132)); // Expenses in red</span>
+<span class="nc" id="L447">        renderer.setSeriesPaint(1, new Color(75, 192, 192)); // Income in green</span>
+        
+        // Set a more reasonable range for the Y-axis
+<span class="nc" id="L450">        BigDecimal maxExpense = getMaxDailySpending(dailySpending);</span>
+<span class="nc" id="L451">        BigDecimal maxIncome = getMaxDailySpending(dailyIncome);</span>
+<span class="nc" id="L452">        BigDecimal maxValue = maxExpense.max(maxIncome);</span>
+        
+<span class="nc" id="L454">        double upperBound = maxValue.doubleValue() * 1.2; // Add 20% margin</span>
+<span class="nc bnc" id="L455" title="All 2 branches missed.">        if (upperBound &lt; 100) {</span>
+<span class="nc" id="L456">            upperBound = 100; // Minimum upper bound</span>
+        }
+<span class="nc" id="L458">        plot.getRangeAxis().setRange(0, upperBound);</span>
+        
+        // Update chart panel
+<span class="nc" id="L461">        spendingChartPanel.setChart(chart);</span>
+        
+        // Force repaint
+<span class="nc" id="L464">        spendingChartPanel.repaint();</span>
+<span class="nc" id="L465">    }</span>
+    
+    private BigDecimal getMaxDailySpending(Map&lt;LocalDate, BigDecimal&gt; dailySpending) {
+<span class="nc" id="L468">        BigDecimal max = BigDecimal.ZERO;</span>
+<span class="nc bnc" id="L469" title="All 2 branches missed.">        for (BigDecimal value : dailySpending.values()) {</span>
+<span class="nc bnc" id="L470" title="All 2 branches missed.">            if (value.compareTo(max) &gt; 0) {</span>
+<span class="nc" id="L471">                max = value;</span>
+            }
+<span class="nc" id="L473">        }</span>
+<span class="nc" id="L474">        return max;</span>
+    }
+    
+    private void updateDistributionChart() {
+        // Get category distribution
+<span class="nc" id="L479">        Map&lt;String, BigDecimal&gt; distribution = dashboardService.getCategoryDistribution();</span>
+        
+        // Create dataset
+<span class="nc" id="L482">        DefaultPieDataset dataset = new DefaultPieDataset();</span>
+        
+<span class="nc bnc" id="L484" title="All 2 branches missed.">        if (distribution.isEmpty()) {</span>
+<span class="nc" id="L485">            dataset.setValue(&quot;No Data&quot;, 1);</span>
+        } else {
+<span class="nc bnc" id="L487" title="All 2 branches missed.">            for (Map.Entry&lt;String, BigDecimal&gt; entry : distribution.entrySet()) {</span>
+<span class="nc" id="L488">                dataset.setValue(entry.getKey(), entry.getValue().doubleValue());</span>
+<span class="nc" id="L489">            }</span>
+        }
+        
+        // Update chart
+<span class="nc" id="L493">        JFreeChart chart = ChartFactory.createPieChart(</span>
+            null,       // Chart title
+            dataset,    // Dataset
+            true,       // Include legend
+            true,       // Include tooltips
+            false       // Include URLs
+        );
+        
+        // Set colors for categories
+<span class="nc" id="L502">        PiePlot plot = (PiePlot) chart.getPlot();</span>
+        
+        // Assign colors to categories if data is present
+<span class="nc bnc" id="L505" title="All 2 branches missed.">        if (!distribution.isEmpty()) {</span>
+<span class="nc" id="L506">            int colorIndex = 0;</span>
+<span class="nc" id="L507">            Color[] colors = {</span>
+                new Color(255, 99, 132),
+                new Color(54, 162, 235),
+                new Color(255, 206, 86),
+                new Color(75, 192, 192),
+                new Color(153, 102, 255),
+                new Color(255, 159, 64),
+                new Color(0, 204, 102)
+            };
+            
+<span class="nc bnc" id="L517" title="All 2 branches missed.">            for (String category : distribution.keySet()) {</span>
+<span class="nc" id="L518">                plot.setSectionPaint(category, colors[colorIndex % colors.length]);</span>
+<span class="nc" id="L519">                colorIndex++;</span>
+<span class="nc" id="L520">            }</span>
+<span class="nc" id="L521">        } else {</span>
+<span class="nc" id="L522">            plot.setSectionPaint(&quot;No Data&quot;, Color.LIGHT_GRAY);</span>
+        }
+        
+        // Update chart panel
+<span class="nc" id="L526">        distributionChartPanel.setChart(chart);</span>
+<span class="nc" id="L527">    }</span>
+    
+    private String formatCurrency(BigDecimal amount) {
+<span class="nc" id="L530">        return &quot;¥&quot; + amount.setScale(2, RoundingMode.HALF_UP).toString();</span>
+    }
+} 
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

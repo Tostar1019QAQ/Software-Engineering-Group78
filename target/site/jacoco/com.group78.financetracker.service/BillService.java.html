@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BillService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">finance-tracker</a> &gt; <a href="index.source.html" class="el_package">com.group78.financetracker.service</a> &gt; <span class="el_source">BillService.java</span></div><h1>BillService.java</h1><pre class="source lang-java linenums">package com.group78.financetracker.service;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.group78.financetracker.model.Bill;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+public class BillService {
+<span class="fc" id="L32">    private static final Logger logger = LoggerFactory.getLogger(BillService.class);</span>
+    private static final String DATA_DIR = &quot;data&quot;;
+    private static final String BILLS_JSON_FILE = &quot;bills.json&quot;;
+    private static final String BILLS_CSV_FILE = &quot;bills.csv&quot;;
+    private final ObjectMapper objectMapper;
+    private final Path dataPath;
+    private List&lt;Bill&gt; bills;
+<span class="fc" id="L39">    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd&quot;);</span>
+
+<span class="fc" id="L41">    public BillService() {</span>
+<span class="fc" id="L42">        objectMapper = new ObjectMapper();</span>
+<span class="fc" id="L43">        objectMapper.registerModule(new JavaTimeModule());</span>
+<span class="fc" id="L44">        dataPath = Paths.get(DATA_DIR);</span>
+<span class="fc" id="L45">        bills = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L46">        createDataDirectoryIfNotExists();</span>
+        
+        // Try to load from CSV first, then fall back to JSON if CSV doesn't exist
+<span class="pc bpc" id="L49" title="1 of 2 branches missed.">        if (!loadBillsFromCSV()) {</span>
+<span class="nc" id="L50">            loadBillsFromJSON();</span>
+            // Convert to CSV format for future use
+<span class="nc" id="L52">            saveBillsToCSV();</span>
+        }
+<span class="fc" id="L54">    }</span>
+
+    private void createDataDirectoryIfNotExists() {
+        try {
+<span class="fc" id="L58">            Files.createDirectories(dataPath);</span>
+<span class="nc" id="L59">        } catch (IOException e) {</span>
+<span class="nc" id="L60">            throw new RuntimeException(&quot;Could not create data directory&quot;, e);</span>
+<span class="fc" id="L61">        }</span>
+<span class="fc" id="L62">    }</span>
+
+    public List&lt;Bill&gt; getAllBills() {
+        // Update status for all bills
+<span class="fc" id="L66">        bills.forEach(Bill::updateStatus);</span>
+        
+        // Sort bills by due date
+<span class="fc" id="L69">        return bills.stream()</span>
+<span class="fc" id="L70">            .sorted(Comparator.comparing(Bill::getDueDate))</span>
+<span class="fc" id="L71">            .collect(Collectors.toList());</span>
+    }
+
+    public List&lt;Bill&gt; getUpcomingBills() {
+        // Update status for all bills and filter
+<span class="fc" id="L76">        return bills.stream()</span>
+<span class="fc" id="L77">            .peek(Bill::updateStatus)</span>
+<span class="fc bfc" id="L78" title="All 2 branches covered.">            .filter(bill -&gt; !bill.getStatus().equals(&quot;Normal&quot;))</span>
+<span class="fc" id="L79">            .sorted(Comparator.comparing(Bill::getDueDate))</span>
+<span class="fc" id="L80">            .collect(Collectors.toList());</span>
+    }
+
+    public Bill addBill(Bill bill) {
+<span class="pc bpc" id="L84" title="3 of 4 branches missed.">        if (bill.getId() == null || bill.getId().isEmpty()) {</span>
+<span class="fc" id="L85">            bill.setId(UUID.randomUUID().toString());</span>
+        }
+<span class="fc" id="L87">        bills.add(bill);</span>
+<span class="fc" id="L88">        saveBills();</span>
+<span class="fc" id="L89">        return bill;</span>
+    }
+
+    public void updateBill(Bill updatedBill) {
+<span class="pc bpc" id="L93" title="1 of 2 branches missed.">        for (int i = 0; i &lt; bills.size(); i++) {</span>
+<span class="fc bfc" id="L94" title="All 2 branches covered.">            if (bills.get(i).getId().equals(updatedBill.getId())) {</span>
+<span class="fc" id="L95">                bills.set(i, updatedBill);</span>
+<span class="fc" id="L96">                break;</span>
+            }
+        }
+<span class="fc" id="L99">        saveBills();</span>
+<span class="fc" id="L100">    }</span>
+
+    public void deleteBill(String billId) {
+<span class="fc" id="L103">        bills.removeIf(bill -&gt; bill.getId().equals(billId));</span>
+<span class="fc" id="L104">        saveBills();</span>
+<span class="fc" id="L105">    }</span>
+    
+    /**
+     * Loads bills from CSV file
+     * @return true if loaded successfully, false otherwise
+     */
+    private boolean loadBillsFromCSV() {
+<span class="fc" id="L112">        Path filePath = dataPath.resolve(BILLS_CSV_FILE);</span>
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">        if (!Files.exists(filePath)) {</span>
+<span class="nc" id="L114">            logger.info(&quot;Bills CSV file not found: {}&quot;, filePath);</span>
+<span class="nc" id="L115">            return false;</span>
+        }
+        
+<span class="fc" id="L118">        try (FileReader reader = new FileReader(filePath.toFile());</span>
+<span class="fc" id="L119">             CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT</span>
+<span class="fc" id="L120">                 .withFirstRecordAsHeader()</span>
+<span class="fc" id="L121">                 .withIgnoreHeaderCase()</span>
+<span class="fc" id="L122">                 .withTrim())) {</span>
+            
+<span class="fc" id="L124">            bills.clear();</span>
+            
+<span class="fc bfc" id="L126" title="All 2 branches covered.">            for (CSVRecord record : csvParser) {</span>
+                try {
+<span class="fc" id="L128">                    String id = record.get(&quot;ID&quot;);</span>
+<span class="fc" id="L129">                    String name = record.get(&quot;Name&quot;);</span>
+<span class="fc" id="L130">                    BigDecimal amount = new BigDecimal(record.get(&quot;Amount&quot;));</span>
+<span class="fc" id="L131">                    LocalDate dueDate = LocalDate.parse(record.get(&quot;DueDate&quot;), dateFormatter);</span>
+<span class="fc" id="L132">                    String paymentMethod = record.get(&quot;PaymentMethod&quot;);</span>
+<span class="fc" id="L133">                    boolean emailNotification = Boolean.parseBoolean(record.get(&quot;EmailNotification&quot;));</span>
+<span class="fc" id="L134">                    boolean pushNotification = Boolean.parseBoolean(record.get(&quot;PushNotification&quot;));</span>
+                    
+<span class="fc" id="L136">                    Bill bill = new Bill(id, name, amount, dueDate, paymentMethod, </span>
+                                        emailNotification, pushNotification);
+<span class="fc" id="L138">                    bills.add(bill);</span>
+<span class="nc" id="L139">                } catch (DateTimeParseException | NumberFormatException e) {</span>
+<span class="nc" id="L140">                    logger.error(&quot;Error parsing bill record: {}&quot;, e.getMessage());</span>
+<span class="fc" id="L141">                }</span>
+<span class="fc" id="L142">            }</span>
+            
+<span class="fc" id="L144">            logger.info(&quot;Loaded {} bills from CSV file&quot;, bills.size());</span>
+<span class="fc" id="L145">            return true;</span>
+<span class="nc" id="L146">        } catch (IOException e) {</span>
+<span class="nc" id="L147">            logger.error(&quot;Failed to load bills from CSV: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L148">            return false;</span>
+        }
+    }
+    
+    /**
+     * Saves bills to CSV file
+     */
+    private void saveBillsToCSV() {
+<span class="fc" id="L156">        Path filePath = dataPath.resolve(BILLS_CSV_FILE);</span>
+        
+<span class="fc" id="L158">        try (FileWriter writer = new FileWriter(filePath.toFile());</span>
+<span class="fc" id="L159">             CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT</span>
+<span class="fc" id="L160">                 .withHeader(&quot;ID&quot;, &quot;Name&quot;, &quot;Amount&quot;, &quot;DueDate&quot;, &quot;PaymentMethod&quot;, </span>
+                            &quot;EmailNotification&quot;, &quot;PushNotification&quot;))) {
+            
+<span class="fc bfc" id="L163" title="All 2 branches covered.">            for (Bill bill : bills) {</span>
+<span class="fc" id="L164">                csvPrinter.printRecord(</span>
+<span class="fc" id="L165">                    bill.getId(),</span>
+<span class="fc" id="L166">                    bill.getName(),</span>
+<span class="fc" id="L167">                    bill.getAmount().toString(),</span>
+<span class="fc" id="L168">                    bill.getDueDate().format(dateFormatter),</span>
+<span class="fc" id="L169">                    bill.getPaymentMethod(),</span>
+<span class="fc" id="L170">                    bill.hasEmailNotification(),</span>
+<span class="fc" id="L171">                    bill.hasPushNotification()</span>
+                );
+<span class="fc" id="L173">            }</span>
+            
+<span class="fc" id="L175">            csvPrinter.flush();</span>
+<span class="fc" id="L176">            logger.info(&quot;Saved {} bills to CSV file&quot;, bills.size());</span>
+<span class="nc" id="L177">        } catch (IOException e) {</span>
+<span class="nc" id="L178">            logger.error(&quot;Failed to save bills to CSV: {}&quot;, e.getMessage());</span>
+<span class="fc" id="L179">        }</span>
+<span class="fc" id="L180">    }</span>
+
+    /**
+     * Loads bills from JSON file
+     */
+    private void loadBillsFromJSON() {
+<span class="nc" id="L186">        Path filePath = dataPath.resolve(BILLS_JSON_FILE);</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">        if (Files.exists(filePath)) {</span>
+            try {
+<span class="nc" id="L189">                bills = objectMapper.readValue(filePath.toFile(),</span>
+<span class="nc" id="L190">                    new TypeReference&lt;List&lt;Bill&gt;&gt;() {});</span>
+                // Update all bill statuses after loading
+<span class="nc" id="L192">                bills.forEach(Bill::updateStatus);</span>
+<span class="nc" id="L193">                logger.info(&quot;Loaded {} bills from JSON file&quot;, bills.size());</span>
+<span class="nc" id="L194">            } catch (IOException e) {</span>
+<span class="nc" id="L195">                logger.error(&quot;Failed to load bills from JSON: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L196">                bills = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L197">            }</span>
+        }
+<span class="nc" id="L199">    }</span>
+
+    /**
+     * Saves bills to JSON file (legacy support)
+     */
+    private void saveBillsToJSON() {
+        try {
+<span class="fc" id="L206">            Path filePath = dataPath.resolve(BILLS_JSON_FILE);</span>
+<span class="fc" id="L207">            objectMapper.writeValue(filePath.toFile(), bills);</span>
+<span class="fc" id="L208">            logger.info(&quot;Saved bills to JSON file&quot;);</span>
+<span class="nc" id="L209">        } catch (IOException e) {</span>
+<span class="nc" id="L210">            logger.error(&quot;Failed to save bills to JSON: {}&quot;, e.getMessage());</span>
+<span class="fc" id="L211">        }</span>
+<span class="fc" id="L212">    }</span>
+    
+    /**
+     * Save bills to both CSV and JSON formats
+     */
+    private void saveBills() {
+<span class="fc" id="L218">        saveBillsToCSV();</span>
+<span class="fc" id="L219">        saveBillsToJSON(); // Keep JSON for backward compatibility</span>
+<span class="fc" id="L220">    }</span>
+    
+    /**
+     * Reload bills data from CSV file
+     */
+    public void reloadBills() {
+<span class="nc" id="L226">        logger.info(&quot;正在重新加载账单数据...&quot;);</span>
+        // 首先尝试从CSV加载
+<span class="nc" id="L228">        boolean csvLoaded = loadBillsFromCSV();</span>
+        
+        // 如果CSV加载失败，尝试从JSON加载
+<span class="nc bnc" id="L231" title="All 2 branches missed.">        if (!csvLoaded) {</span>
+<span class="nc" id="L232">            logger.info(&quot;CSV加载失败，尝试从JSON加载&quot;);</span>
+<span class="nc" id="L233">            loadBillsFromJSON();</span>
+        }
+        
+        // 更新所有账单的状态
+<span class="nc" id="L237">        bills.forEach(Bill::updateStatus);</span>
+        
+<span class="nc" id="L239">        logger.info(&quot;账单数据重新加载完成，共 {} 条账单记录&quot;, bills.size());</span>
+<span class="nc" id="L240">    }</span>
+} 
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

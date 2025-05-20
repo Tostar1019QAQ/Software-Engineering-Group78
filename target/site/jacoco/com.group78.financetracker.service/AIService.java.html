@@ -1,0 +1,385 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AIService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">finance-tracker</a> &gt; <a href="index.source.html" class="el_package">com.group78.financetracker.service</a> &gt; <span class="el_source">AIService.java</span></div><h1>AIService.java</h1><pre class="source lang-java linenums">package com.group78.financetracker.service;
+
+import com.group78.financetracker.model.Transaction;
+import com.group78.financetracker.model.TransactionType;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.JsonNode;
+
+public class AIService {
+<span class="fc" id="L28">    private static final Logger logger = LoggerFactory.getLogger(AIService.class);</span>
+    
+    // DeepSeek API configuration
+    private static final String DEEPSEEK_API_URL = &quot;https://api.deepseek.com/v1/chat/completions&quot;;
+<span class="fc" id="L32">    private static String DEEPSEEK_API_KEY = &quot;sk-5437453fe5544771b8ca5196cfac9bc5&quot;; // Using the provided API key</span>
+    private static final String DEEPSEEK_MODEL = &quot;deepseek-chat&quot;;
+    
+    private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
+    
+    // Predefined expense categories
+<span class="fc" id="L39">    private static final Set&lt;String&gt; PREDEFINED_CATEGORIES = new HashSet&lt;&gt;(Arrays.asList(</span>
+        &quot;Food&quot;, &quot;Transport&quot;, &quot;Shopping&quot;, &quot;Entertainment&quot;, &quot;Housing&quot;, &quot;Healthcare&quot;, &quot;Education&quot;, &quot;Communication&quot;, &quot;Others&quot;
+    ));
+
+    // Keyword-based category mapping
+<span class="fc" id="L44">    private static final Map&lt;String, String&gt; KEYWORD_CATEGORY_MAP = new HashMap&lt;String, String&gt;() {{</span>
+<span class="fc" id="L45">        put(&quot;supermarket&quot;, &quot;Shopping&quot;);</span>
+<span class="fc" id="L46">        put(&quot;restaurant&quot;, &quot;Food&quot;);</span>
+<span class="fc" id="L47">        put(&quot;subway&quot;, &quot;Transport&quot;);</span>
+<span class="fc" id="L48">        put(&quot;bus&quot;, &quot;Transport&quot;);</span>
+<span class="fc" id="L49">        put(&quot;taxi&quot;, &quot;Transport&quot;);</span>
+<span class="fc" id="L50">        put(&quot;movie&quot;, &quot;Entertainment&quot;);</span>
+<span class="fc" id="L51">        put(&quot;rent&quot;, &quot;Housing&quot;);</span>
+<span class="fc" id="L52">        put(&quot;utility&quot;, &quot;Housing&quot;);</span>
+<span class="fc" id="L53">        put(&quot;hospital&quot;, &quot;Healthcare&quot;);</span>
+<span class="fc" id="L54">        put(&quot;pharmacy&quot;, &quot;Healthcare&quot;);</span>
+<span class="fc" id="L55">        put(&quot;tuition&quot;, &quot;Education&quot;);</span>
+<span class="fc" id="L56">        put(&quot;bookstore&quot;, &quot;Education&quot;);</span>
+<span class="fc" id="L57">        put(&quot;phone&quot;, &quot;Communication&quot;);</span>
+<span class="fc" id="L58">        put(&quot;internet&quot;, &quot;Communication&quot;);</span>
+<span class="fc" id="L59">    }};</span>
+
+<span class="fc" id="L61">    public AIService() {</span>
+<span class="fc" id="L62">        this.httpClient = HttpClient.newBuilder()</span>
+<span class="fc" id="L63">                .version(HttpClient.Version.HTTP_2)</span>
+<span class="fc" id="L64">                .connectTimeout(Duration.ofSeconds(30))</span>
+<span class="fc" id="L65">                .build();</span>
+<span class="fc" id="L66">        this.objectMapper = new ObjectMapper();</span>
+<span class="fc" id="L67">        logger.info(&quot;AIService initialized with DeepSeek API&quot;);</span>
+<span class="fc" id="L68">    }</span>
+
+    /**
+     * Automatically categorizes a transaction based on its description
+     */
+    public String categorizeTransaction(String description) {
+<span class="nc" id="L74">        String lowerDesc = description.toLowerCase();</span>
+        
+        // First try keyword-based matching
+<span class="nc bnc" id="L77" title="All 2 branches missed.">        for (Map.Entry&lt;String, String&gt; entry : KEYWORD_CATEGORY_MAP.entrySet()) {</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">            if (lowerDesc.contains(entry.getKey().toLowerCase())) {</span>
+<span class="nc" id="L79">                return entry.getValue();</span>
+            }
+<span class="nc" id="L81">        }</span>
+        
+        // 如果关键词匹配失败，使用简单的启发式匹配而不是调用API
+<span class="nc bnc" id="L84" title="All 8 branches missed.">        if (lowerDesc.contains(&quot;gas&quot;) || lowerDesc.contains(&quot;uber&quot;) || lowerDesc.contains(&quot;bus&quot;) || lowerDesc.contains(&quot;train&quot;)) {</span>
+<span class="nc" id="L85">            return &quot;Transport&quot;;</span>
+<span class="nc bnc" id="L86" title="All 6 branches missed.">        } else if (lowerDesc.contains(&quot;grocery&quot;) || lowerDesc.contains(&quot;restaurant&quot;) || lowerDesc.contains(&quot;cafe&quot;)) {</span>
+<span class="nc" id="L87">            return &quot;Food&quot;;</span>
+<span class="nc bnc" id="L88" title="All 4 branches missed.">        } else if (lowerDesc.contains(&quot;rent&quot;) || lowerDesc.contains(&quot;mortgage&quot;)) {</span>
+<span class="nc" id="L89">            return &quot;Housing&quot;;</span>
+<span class="nc bnc" id="L90" title="All 6 branches missed.">        } else if (lowerDesc.contains(&quot;movie&quot;) || lowerDesc.contains(&quot;game&quot;) || lowerDesc.contains(&quot;netflix&quot;)) {</span>
+<span class="nc" id="L91">            return &quot;Entertainment&quot;;</span>
+<span class="nc bnc" id="L92" title="All 6 branches missed.">        } else if (lowerDesc.contains(&quot;doctor&quot;) || lowerDesc.contains(&quot;hospital&quot;) || lowerDesc.contains(&quot;medicine&quot;)) {</span>
+<span class="nc" id="L93">            return &quot;Healthcare&quot;;</span>
+<span class="nc bnc" id="L94" title="All 6 branches missed.">        } else if (lowerDesc.contains(&quot;school&quot;) || lowerDesc.contains(&quot;book&quot;) || lowerDesc.contains(&quot;course&quot;)) {</span>
+<span class="nc" id="L95">            return &quot;Education&quot;;</span>
+        } else {
+<span class="nc" id="L97">            return &quot;Others&quot;; // 默认分类</span>
+        }
+    }
+    
+    /**
+     * Analyzes spending patterns
+     */
+    public Map&lt;String, Object&gt; analyzeSpendingPattern(List&lt;Transaction&gt; transactions) {
+<span class="fc" id="L105">        Map&lt;String, Object&gt; analysis = new HashMap&lt;&gt;();</span>
+        
+<span class="pc bpc" id="L107" title="1 of 2 branches missed.">        if (transactions.isEmpty()) {</span>
+<span class="nc" id="L108">            return analysis;</span>
+        }
+
+        // Calculate total spending by category
+<span class="fc" id="L112">        Map&lt;String, BigDecimal&gt; categoryTotals = transactions.stream()</span>
+<span class="fc" id="L113">            .collect(Collectors.groupingBy(</span>
+                Transaction::getCategory,
+<span class="fc" id="L115">                Collectors.reducing(BigDecimal.ZERO, Transaction::getAmount, BigDecimal::add)</span>
+            ));
+        
+        // Find category with highest spending
+<span class="fc" id="L119">        String topCategory = categoryTotals.entrySet().stream()</span>
+<span class="fc" id="L120">            .max(Map.Entry.comparingByValue())</span>
+<span class="fc" id="L121">            .map(Map.Entry::getKey)</span>
+<span class="fc" id="L122">            .orElse(&quot;&quot;);</span>
+        
+        // Calculate daily average spending
+<span class="fc" id="L125">        BigDecimal totalSpent = categoryTotals.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+<span class="fc" id="L126">        long daysBetween = ChronoUnit.DAYS.between(</span>
+<span class="fc" id="L127">            transactions.get(0).getDateTime(),</span>
+<span class="fc" id="L128">            transactions.get(transactions.size() - 1).getDateTime()</span>
+        ) + 1;
+<span class="fc" id="L130">        BigDecimal dailyAverage = totalSpent.divide(BigDecimal.valueOf(daysBetween), 2, BigDecimal.ROUND_HALF_UP);</span>
+
+        // Calculate spending trends
+<span class="fc" id="L133">        double[] amounts = transactions.stream()</span>
+<span class="fc" id="L134">            .mapToDouble(t -&gt; t.getAmount().doubleValue())</span>
+<span class="fc" id="L135">            .toArray();</span>
+<span class="fc" id="L136">        DescriptiveStatistics stats = new DescriptiveStatistics(amounts);</span>
+        
+<span class="fc" id="L138">        analysis.put(&quot;categoryTotals&quot;, categoryTotals);</span>
+<span class="fc" id="L139">        analysis.put(&quot;topCategory&quot;, topCategory);</span>
+<span class="fc" id="L140">        analysis.put(&quot;dailyAverage&quot;, dailyAverage);</span>
+<span class="fc" id="L141">        analysis.put(&quot;totalSpent&quot;, totalSpent);</span>
+<span class="fc" id="L142">        analysis.put(&quot;mean&quot;, stats.getMean());</span>
+<span class="fc" id="L143">        analysis.put(&quot;median&quot;, stats.getPercentile(50));</span>
+<span class="fc" id="L144">        analysis.put(&quot;standardDeviation&quot;, stats.getStandardDeviation());</span>
+
+<span class="fc" id="L146">        return analysis;</span>
+    }
+
+    /**
+     * Generates personalized financial insights
+     */
+    public String generateFinancialInsights(List&lt;Transaction&gt; transactions) {
+<span class="pc bpc" id="L153" title="1 of 2 branches missed.">        if (transactions.isEmpty()) {</span>
+<span class="nc" id="L154">            return &quot;没有足够的交易数据进行分析。&quot;;</span>
+        }
+        
+        // 使用基本分析替代DeepSeek API调用
+<span class="fc" id="L158">        Map&lt;String, Object&gt; analysis = analyzeSpendingPattern(transactions);</span>
+<span class="fc" id="L159">        List&lt;String&gt; suggestions = generateBasicSavingsSuggestions(analysis);</span>
+        
+<span class="fc" id="L161">        StringBuilder insights = new StringBuilder();</span>
+<span class="fc" id="L162">        insights.append(&quot;财务分析报告:\n\n&quot;);</span>
+        
+        // 添加基本财务指标
+<span class="fc" id="L165">        BigDecimal totalSpent = (BigDecimal) analysis.get(&quot;totalSpent&quot;);</span>
+<span class="fc" id="L166">        BigDecimal dailyAverage = (BigDecimal) analysis.get(&quot;dailyAverage&quot;);</span>
+<span class="fc" id="L167">        String topCategory = (String) analysis.get(&quot;topCategory&quot;);</span>
+        
+<span class="fc" id="L169">        insights.append(&quot;您在 &quot;).append(topCategory).append(&quot; 类别上的支出最高。\n&quot;);</span>
+<span class="fc" id="L170">        insights.append(&quot;平均每日支出为 ¥&quot;).append(dailyAverage.setScale(2, RoundingMode.HALF_UP)).append(&quot;。\n\n&quot;);</span>
+        
+        // 添加建议
+<span class="fc" id="L173">        insights.append(&quot;建议:\n&quot;);</span>
+<span class="fc bfc" id="L174" title="All 2 branches covered.">        for (String suggestion : suggestions) {</span>
+<span class="fc" id="L175">            insights.append(&quot;- &quot;).append(suggestion).append(&quot;\n&quot;);</span>
+<span class="fc" id="L176">        }</span>
+        
+<span class="fc" id="L178">        return insights.toString();</span>
+    }
+    
+    /**
+     * Generate financial insights from a custom prompt
+     */
+    public String generateFinancialInsights(String customPrompt) {
+        // 提供固定的财务洞察而不是调用API
+<span class="nc" id="L186">        StringBuilder insights = new StringBuilder();</span>
+        
+<span class="nc" id="L188">        insights.append(&quot;财务分析:\n\n&quot;);</span>
+<span class="nc" id="L189">        insights.append(&quot;根据您的财务数据，我们建议考虑以下方面的改进:\n&quot;);</span>
+<span class="nc" id="L190">        insights.append(&quot;1. 创建应急基金：建立相当于3-6个月日常开支的储备金。\n&quot;);</span>
+<span class="nc" id="L191">        insights.append(&quot;2. 制定详细预算：跟踪每月支出，找出可以削减的领域。\n&quot;);</span>
+<span class="nc" id="L192">        insights.append(&quot;3. 优化开支结构：尽量将至少20%的收入用于储蓄和投资。\n&quot;);</span>
+<span class="nc" id="L193">        insights.append(&quot;4. 审查固定支出：定期检查各种订阅服务和账单，取消不必要的支出。\n&quot;);</span>
+<span class="nc" id="L194">        insights.append(&quot;5. 设立自动储蓄：每次发薪日自动转移一部分资金到储蓄账户。\n&quot;);</span>
+        
+<span class="nc" id="L196">        return insights.toString();</span>
+    }
+
+    /**
+     * Generates basic savings suggestions (fallback option)
+     */
+    public List&lt;String&gt; generateBasicSavingsSuggestions(Map&lt;String, Object&gt; analysis) {
+<span class="fc" id="L203">        List&lt;String&gt; suggestions = new ArrayList&lt;&gt;();</span>
+        
+        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="fc" id="L206">        Map&lt;String, BigDecimal&gt; categoryTotals = (Map&lt;String, BigDecimal&gt;) analysis.get(&quot;categoryTotals&quot;);</span>
+<span class="fc" id="L207">        String topCategory = (String) analysis.get(&quot;topCategory&quot;);</span>
+<span class="fc" id="L208">        BigDecimal dailyAverage = (BigDecimal) analysis.get(&quot;dailyAverage&quot;);</span>
+        
+        // Suggestions based on highest spending category
+<span class="pc bpc" id="L211" title="2 of 4 branches missed.">        if (topCategory != null &amp;&amp; !topCategory.isEmpty()) {</span>
+<span class="fc" id="L212">            suggestions.add(&quot;Your highest spending is in &quot; + topCategory + &quot; category. Consider reviewing these expenses.&quot;);</span>
+        }
+        
+        // Suggestions based on daily average spending
+<span class="pc bpc" id="L216" title="1 of 2 branches missed.">        if (dailyAverage.compareTo(new BigDecimal(&quot;200&quot;)) &gt; 0) {</span>
+<span class="fc" id="L217">            suggestions.add(&quot;Your daily spending is relatively high. Consider creating a detailed budget plan.&quot;);</span>
+        }
+        
+        // Suggestions based on category distribution
+<span class="pc bpc" id="L221" title="1 of 2 branches missed.">        if (categoryTotals != null) {</span>
+<span class="fc" id="L222">            BigDecimal foodExpense = categoryTotals.getOrDefault(&quot;Food&quot;, BigDecimal.ZERO);</span>
+<span class="fc" id="L223">            BigDecimal totalExpense = categoryTotals.values().stream()</span>
+<span class="fc" id="L224">                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+            
+<span class="pc bpc" id="L226" title="1 of 2 branches missed.">            if (foodExpense.compareTo(totalExpense.multiply(new BigDecimal(&quot;0.3&quot;))) &gt; 0) {</span>
+<span class="nc" id="L227">                suggestions.add(&quot;Food expenses are high relative to total spending. Consider reducing dining out frequency.&quot;);</span>
+            }
+        }
+        
+        // General suggestions
+<span class="fc" id="L232">        suggestions.add(&quot;Consider using automatic expense tracking to maintain timely and accurate records.&quot;);</span>
+<span class="fc" id="L233">        suggestions.add(&quot;Regularly review your bills to ensure there are no duplicate or erroneous charges.&quot;);</span>
+        
+<span class="fc" id="L235">        return suggestions;</span>
+    }
+    
+    /**
+     * Configure API key
+     */
+    public void setApiKey(String apiKey) {
+        // In a real application, the API key should be stored securely
+        // This is just for demonstration
+<span class="nc" id="L244">        DEEPSEEK_API_KEY = apiKey;</span>
+<span class="nc" id="L245">        logger.info(&quot;DeepSeek API key updated&quot;);</span>
+<span class="nc" id="L246">    }</span>
+
+    /**
+     * Calculates financial health score based on transaction data
+     */
+    public Map&lt;String, Object&gt; calculateFinancialHealthScore(List&lt;Transaction&gt; transactions) {
+<span class="fc" id="L252">        Map&lt;String, Object&gt; result = new HashMap&lt;&gt;();</span>
+        
+        // Calculate income and expenses
+<span class="fc" id="L255">        BigDecimal totalIncome = transactions.stream()</span>
+<span class="fc bfc" id="L256" title="All 2 branches covered.">            .filter(t -&gt; t.getType() == TransactionType.INCOME)</span>
+<span class="fc" id="L257">            .map(Transaction::getAmount)</span>
+<span class="fc" id="L258">            .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+        
+<span class="fc" id="L260">        BigDecimal totalExpenses = transactions.stream()</span>
+<span class="fc bfc" id="L261" title="All 2 branches covered.">            .filter(t -&gt; t.getType() == TransactionType.EXPENSE)</span>
+<span class="fc" id="L262">            .map(Transaction::getAmount)</span>
+<span class="fc" id="L263">            .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+        
+<span class="fc" id="L265">        BigDecimal netSavings = totalIncome.subtract(totalExpenses);</span>
+        
+        // Calculate savings rate
+<span class="fc" id="L268">        BigDecimal savingsRate = BigDecimal.ZERO;</span>
+<span class="pc bpc" id="L269" title="1 of 2 branches missed.">        if (totalIncome.compareTo(BigDecimal.ZERO) &gt; 0) {</span>
+<span class="fc" id="L270">            savingsRate = netSavings.multiply(new BigDecimal(&quot;100&quot;))</span>
+<span class="fc" id="L271">                .divide(totalIncome, 2, RoundingMode.HALF_UP);</span>
+        }
+        
+        // Calculate expense-to-income ratio
+<span class="fc" id="L275">        BigDecimal expenseToIncomeRatio = BigDecimal.ONE; // Default to 1 (100%)</span>
+<span class="pc bpc" id="L276" title="1 of 2 branches missed.">        if (totalIncome.compareTo(BigDecimal.ZERO) &gt; 0) {</span>
+<span class="fc" id="L277">            expenseToIncomeRatio = totalExpenses.divide(totalIncome, 2, RoundingMode.HALF_UP);</span>
+        }
+        
+        // Basic score calculation based on savings rate
+<span class="fc" id="L281">        int savingsComponent = 0;</span>
+<span class="pc bpc" id="L282" title="1 of 2 branches missed.">        if (savingsRate.compareTo(BigDecimal.ZERO) &gt; 0) {</span>
+<span class="fc" id="L283">            savingsComponent = Math.min(50, savingsRate.intValue());</span>
+        }
+        
+        // Score based on expense ratio (lower is better)
+<span class="fc" id="L287">        int expenseComponent = 0;</span>
+<span class="pc bpc" id="L288" title="1 of 2 branches missed.">        if (expenseToIncomeRatio.compareTo(BigDecimal.ONE) &lt;= 0) {</span>
+<span class="fc" id="L289">            expenseComponent = (int)(50 * (1 - expenseToIncomeRatio.doubleValue()));</span>
+        }
+        
+        // Final score combines both components
+<span class="fc" id="L293">        int finalScore = savingsComponent + expenseComponent;</span>
+        
+        // Determine category based on score
+        String category;
+<span class="pc bpc" id="L297" title="1 of 2 branches missed.">        if (finalScore &gt;= 80) {</span>
+<span class="fc" id="L298">            category = &quot;Excellent&quot;;</span>
+<span class="nc bnc" id="L299" title="All 2 branches missed.">        } else if (finalScore &gt;= 60) {</span>
+<span class="nc" id="L300">            category = &quot;Good&quot;;</span>
+<span class="nc bnc" id="L301" title="All 2 branches missed.">        } else if (finalScore &gt;= 40) {</span>
+<span class="nc" id="L302">            category = &quot;Fair&quot;;</span>
+<span class="nc bnc" id="L303" title="All 2 branches missed.">        } else if (finalScore &gt;= 20) {</span>
+<span class="nc" id="L304">            category = &quot;Needs Improvement&quot;;</span>
+        } else {
+<span class="nc" id="L306">            category = &quot;Critical&quot;;</span>
+        }
+        
+        // Generate recommendations based on financial metrics
+<span class="fc" id="L310">        List&lt;String&gt; recommendations = new ArrayList&lt;&gt;();</span>
+        
+<span class="pc bpc" id="L312" title="1 of 2 branches missed.">        if (savingsRate.compareTo(new BigDecimal(&quot;20&quot;)) &lt; 0) {</span>
+<span class="nc" id="L313">            recommendations.add(&quot;增加储蓄率至少达到20%，以确保长期财务安全&quot;);</span>
+        }
+        
+<span class="pc bpc" id="L316" title="1 of 2 branches missed.">        if (expenseToIncomeRatio.compareTo(new BigDecimal(&quot;0.8&quot;)) &gt; 0) {</span>
+<span class="nc" id="L317">            recommendations.add(&quot;降低支出与收入的比例到80%以下，避免财务紧张&quot;);</span>
+        }
+        
+<span class="pc bpc" id="L320" title="1 of 2 branches missed.">        if (netSavings.compareTo(BigDecimal.ZERO) &lt;= 0) {</span>
+<span class="nc" id="L321">            recommendations.add(&quot;紧急调整预算，确保收入大于支出，避免负现金流&quot;);</span>
+        }
+        
+        // Add general recommendations
+<span class="fc" id="L325">        recommendations.add(&quot;建立相当于3-6个月生活费用的应急基金&quot;);</span>
+<span class="fc" id="L326">        recommendations.add(&quot;定期检查账单和订阅服务，取消不必要的开支&quot;);</span>
+<span class="fc" id="L327">        recommendations.add(&quot;考虑增加额外收入来源，提高整体财务稳定性&quot;);</span>
+        
+        // Populate result map
+<span class="fc" id="L330">        result.put(&quot;score&quot;, finalScore);</span>
+<span class="fc" id="L331">        result.put(&quot;category&quot;, category);</span>
+<span class="fc" id="L332">        result.put(&quot;savingsRate&quot;, savingsRate);</span>
+<span class="fc" id="L333">        result.put(&quot;expenseToIncomeRatio&quot;, expenseToIncomeRatio);</span>
+<span class="fc" id="L334">        result.put(&quot;totalIncome&quot;, totalIncome);</span>
+<span class="fc" id="L335">        result.put(&quot;totalExpenses&quot;, totalExpenses);</span>
+<span class="fc" id="L336">        result.put(&quot;netSavings&quot;, netSavings);</span>
+<span class="fc" id="L337">        result.put(&quot;recommendations&quot;, recommendations);</span>
+        
+<span class="fc" id="L339">        return result;</span>
+    }
+    
+    /**
+     * Generates financial health report based on transaction data
+     */
+    public String generateFinancialHealthReport(List&lt;Transaction&gt; transactions) {
+<span class="fc" id="L346">        Map&lt;String, Object&gt; healthScore = calculateFinancialHealthScore(transactions);</span>
+        
+        // 创建基本的财务健康报告
+<span class="fc" id="L349">        int score = (int) healthScore.get(&quot;score&quot;);</span>
+<span class="fc" id="L350">        String category = (String) healthScore.get(&quot;category&quot;);</span>
+<span class="fc" id="L351">        BigDecimal savingsRate = (BigDecimal) healthScore.get(&quot;savingsRate&quot;);</span>
+<span class="fc" id="L352">        BigDecimal expenseRatio = (BigDecimal) healthScore.get(&quot;expenseToIncomeRatio&quot;);</span>
+        
+        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="fc" id="L355">        List&lt;String&gt; recommendations = (List&lt;String&gt;) healthScore.get(&quot;recommendations&quot;);</span>
+        
+        // 生成报告
+<span class="fc" id="L358">        StringBuilder report = new StringBuilder();</span>
+<span class="fc" id="L359">        report.append(&quot;# 财务健康报告\n\n&quot;);</span>
+<span class="fc" id="L360">        report.append(String.format(&quot;您的财务健康评分: %d/100 (%s)\n\n&quot;, score, category));</span>
+<span class="fc" id="L361">        report.append(String.format(&quot;储蓄率: %.1f%%\n&quot;, savingsRate.doubleValue()));</span>
+<span class="fc" id="L362">        report.append(String.format(&quot;支出占收入比例: %.2f\n\n&quot;, expenseRatio.doubleValue()));</span>
+        
+<span class="fc" id="L364">        report.append(&quot;## 分析\n\n&quot;);</span>
+<span class="pc bpc" id="L365" title="1 of 2 branches missed.">        if (score &gt;= 80) {</span>
+<span class="fc" id="L366">            report.append(&quot;您的财务状况非常健康。您有良好的储蓄习惯，支出管理得当。继续保持这些良好习惯，将帮助您实现长期财务目标。\n\n&quot;);</span>
+<span class="nc bnc" id="L367" title="All 2 branches missed.">        } else if (score &gt;= 60) {</span>
+<span class="nc" id="L368">            report.append(&quot;您的财务状况良好，但仍有改进空间。增加储蓄或减少非必要支出可以进一步提高您的财务健康。\n\n&quot;);</span>
+<span class="nc bnc" id="L369" title="All 2 branches missed.">        } else if (score &gt;= 40) {</span>
+<span class="nc" id="L370">            report.append(&quot;您的财务状况一般，需要注意改进。建议审视您的支出模式，寻找可以削减的领域，并增加储蓄。\n\n&quot;);</span>
+<span class="nc bnc" id="L371" title="All 2 branches missed.">        } else if (score &gt;= 20) {</span>
+<span class="nc" id="L372">            report.append(&quot;您的财务状况需要显著改善。优先考虑减少支出，增加储蓄，并可能需要寻求额外收入来源。\n\n&quot;);</span>
+        } else {
+<span class="nc" id="L374">            report.append(&quot;您的财务状况处于危急水平。需要立即采取行动减少支出，重新规划预算，以避免更严重的财务问题。\n\n&quot;);</span>
+        }
+        
+<span class="fc" id="L377">        report.append(&quot;## 建议\n\n&quot;);</span>
+<span class="fc bfc" id="L378" title="All 2 branches covered.">        for (String recommendation : recommendations) {</span>
+<span class="fc" id="L379">            report.append(&quot;- &quot;).append(recommendation).append(&quot;\n&quot;);</span>
+<span class="fc" id="L380">        }</span>
+        
+<span class="fc" id="L382">        return report.toString();</span>
+    }
+} 
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -2,6 +2,7 @@ package com.group78.financetracker.ui;
 
 import com.group78.financetracker.model.Transaction;
 import com.group78.financetracker.service.AIService;
+import com.group78.financetracker.service.ReportGenerator;
 import com.group78.financetracker.service.TransactionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -124,7 +125,10 @@ public class AIPanel extends JPanel {
             "Smart Financial Analysis & Recommendations",
             "Spending Pattern Analysis",
             "Financial Health Score",
-            "Auto-categorization Examples"
+            "Auto-categorization Examples",
+            "Income-Expense Report",
+            "Cash Flow Forecast",
+            "Smart Savings Recommendations"
         });
         
         // Analyze button
@@ -580,9 +584,23 @@ public class AIPanel extends JPanel {
                     // Financial Health Score
                     String report = aiService.generateFinancialHealthReport(transactions);
                     return formatFinancialHealthReport(report, aiService.calculateFinancialHealthScore(transactions));
-                } else {
+                } else if (selectedIndex == 3) {
                     // Auto-categorization examples
                     return generateCategorizationExamples();
+                } else if (selectedIndex == 4) {
+                    // Income-Expense Report
+                    ReportGenerator reportGenerator = new ReportGenerator(aiService);
+                    return reportGenerator.generateReport("income-expense", transactions);
+                } else if (selectedIndex == 5) {
+                    // Cash Flow Forecast
+                    ReportGenerator reportGenerator = new ReportGenerator(aiService);
+                    return reportGenerator.generateReport("cash-flow", transactions);
+                } else if (selectedIndex == 6) {
+                    // Smart Savings Recommendations
+                    ReportGenerator reportGenerator = new ReportGenerator(aiService);
+                    return reportGenerator.generateReport("savings", transactions);
+                } else {
+                    return "<html><body><h1>Error</h1><p>Invalid analysis type selected.</p></body></html>";
                 }
             } catch (Exception ex) {
                 logger.error("Analysis error: {}", ex.getMessage(), ex);

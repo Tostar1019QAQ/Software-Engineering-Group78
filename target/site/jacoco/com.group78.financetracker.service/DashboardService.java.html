@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DashboardService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">finance-tracker</a> &gt; <a href="index.source.html" class="el_package">com.group78.financetracker.service</a> &gt; <span class="el_source">DashboardService.java</span></div><h1>DashboardService.java</h1><pre class="source lang-java linenums">package com.group78.financetracker.service;
+
+import com.group78.financetracker.model.Transaction;
+import com.group78.financetracker.model.TransactionType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+public class DashboardService {
+<span class="fc" id="L15">    private static final Logger logger = LoggerFactory.getLogger(DashboardService.class);</span>
+    private final ImportService importService;
+
+<span class="fc" id="L18">    public DashboardService() {</span>
+<span class="fc" id="L19">        this.importService = new ImportService();</span>
+<span class="fc" id="L20">    }</span>
+
+    public ImportService getImportService() {
+<span class="nc" id="L23">        return importService;</span>
+    }
+
+    public List&lt;Transaction&gt; getRecentTransactions() {
+<span class="nc" id="L27">        List&lt;Transaction&gt; allTransactions = importService.getAllTransactions();</span>
+<span class="nc" id="L28">        return allTransactions.stream()</span>
+<span class="nc" id="L29">                .sorted((t1, t2) -&gt; t2.getDateTime().compareTo(t1.getDateTime()))</span>
+<span class="nc" id="L30">                .limit(10)</span>
+<span class="nc" id="L31">                .collect(Collectors.toList());</span>
+    }
+
+    public Map&lt;String, BigDecimal&gt; getCategoryDistribution() {
+<span class="nc" id="L35">        List&lt;Transaction&gt; allTransactions = importService.getAllTransactions();</span>
+<span class="nc" id="L36">        Map&lt;String, BigDecimal&gt; distribution = new HashMap&lt;&gt;();</span>
+
+<span class="nc bnc" id="L38" title="All 2 branches missed.">        for (Transaction transaction : allTransactions) {</span>
+<span class="nc bnc" id="L39" title="All 2 branches missed.">            if (transaction.getType() == TransactionType.EXPENSE) {</span>
+<span class="nc" id="L40">                String category = transaction.getCategory();</span>
+<span class="nc" id="L41">                BigDecimal amount = transaction.getAmount();</span>
+<span class="nc" id="L42">                distribution.merge(category, amount, BigDecimal::add);</span>
+            }
+<span class="nc" id="L44">        }</span>
+
+<span class="nc" id="L46">        return distribution;</span>
+    }
+
+    public Map&lt;LocalDate, BigDecimal&gt; getDailySpending(int days) {
+<span class="nc" id="L50">        logger.debug(&quot;Fetching daily spending for last {} days&quot;, days);</span>
+<span class="nc" id="L51">        List&lt;Transaction&gt; allTransactions = importService.getAllTransactions();</span>
+<span class="nc" id="L52">        logger.debug(&quot;Total transactions: {}&quot;, allTransactions.size());</span>
+        
+<span class="nc" id="L54">        LocalDate endDate = LocalDate.now();</span>
+<span class="nc" id="L55">        LocalDate startDate = endDate.minusDays(days - 1);</span>
+        
+<span class="nc" id="L57">        logger.debug(&quot;Date range: {} to {}&quot;, startDate, endDate);</span>
+        
+<span class="nc" id="L59">        Map&lt;LocalDate, BigDecimal&gt; dailySpending = new TreeMap&lt;&gt;();</span>
+        
+        // Initialize all dates with zero
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        for (int i = 0; i &lt; days; i++) {</span>
+<span class="nc" id="L63">            LocalDate date = startDate.plusDays(i);</span>
+<span class="nc" id="L64">            dailySpending.put(date, BigDecimal.ZERO);</span>
+<span class="nc" id="L65">            logger.trace(&quot;Initialized date: {}&quot;, date);</span>
+        }
+
+        // Sum up transactions for each day
+<span class="nc bnc" id="L69" title="All 2 branches missed.">        for (Transaction transaction : allTransactions) {</span>
+<span class="nc" id="L70">            LocalDate date = transaction.getDateTime().toLocalDate();</span>
+            
+            // Only process EXPENSE transactions
+<span class="nc bnc" id="L73" title="All 2 branches missed.">            if (transaction.getType() == TransactionType.EXPENSE) {</span>
+<span class="nc" id="L74">                logger.trace(&quot;Checking expense transaction: {} - {} - {}&quot;, </span>
+<span class="nc" id="L75">                           date, transaction.getAmount(), transaction.getDescription());</span>
+                
+                // Check if the date is within our range
+<span class="nc bnc" id="L78" title="All 4 branches missed.">                if (!date.isBefore(startDate) &amp;&amp; !date.isAfter(endDate)) {</span>
+<span class="nc" id="L79">                    BigDecimal currentAmount = dailySpending.get(date);</span>
+<span class="nc" id="L80">                    BigDecimal newAmount = currentAmount.add(transaction.getAmount());</span>
+<span class="nc" id="L81">                    dailySpending.put(date, newAmount);</span>
+<span class="nc" id="L82">                    logger.trace(&quot;Added to daily spending: {}, now: {}&quot;, date, newAmount);</span>
+                }
+            }
+<span class="nc" id="L85">        }</span>
+
+<span class="nc" id="L87">        return dailySpending;</span>
+    }
+
+    /**
+     * 获取指定天数内的每日收入
+     * @param days 天数
+     * @return 日期到收入金额的映射
+     */
+    public Map&lt;LocalDate, BigDecimal&gt; getDailyIncome(int days) {
+<span class="nc" id="L96">        logger.debug(&quot;Fetching daily income for last {} days&quot;, days);</span>
+<span class="nc" id="L97">        List&lt;Transaction&gt; allTransactions = importService.getAllTransactions();</span>
+        
+<span class="nc" id="L99">        LocalDate endDate = LocalDate.now();</span>
+<span class="nc" id="L100">        LocalDate startDate = endDate.minusDays(days - 1);</span>
+        
+<span class="nc" id="L102">        Map&lt;LocalDate, BigDecimal&gt; dailyIncome = new TreeMap&lt;&gt;();</span>
+        
+        // Initialize all dates with zero
+<span class="nc bnc" id="L105" title="All 2 branches missed.">        for (int i = 0; i &lt; days; i++) {</span>
+<span class="nc" id="L106">            LocalDate date = startDate.plusDays(i);</span>
+<span class="nc" id="L107">            dailyIncome.put(date, BigDecimal.ZERO);</span>
+        }
+
+        // Sum up transactions for each day
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        for (Transaction transaction : allTransactions) {</span>
+<span class="nc" id="L112">            LocalDate date = transaction.getDateTime().toLocalDate();</span>
+            
+            // Only process INCOME transactions
+<span class="nc bnc" id="L115" title="All 2 branches missed.">            if (transaction.getType() == TransactionType.INCOME) {</span>
+                // Check if the date is within our range
+<span class="nc bnc" id="L117" title="All 4 branches missed.">                if (!date.isBefore(startDate) &amp;&amp; !date.isAfter(endDate)) {</span>
+<span class="nc" id="L118">                    BigDecimal currentAmount = dailyIncome.get(date);</span>
+<span class="nc" id="L119">                    BigDecimal newAmount = currentAmount.add(transaction.getAmount());</span>
+<span class="nc" id="L120">                    dailyIncome.put(date, newAmount);</span>
+<span class="nc" id="L121">                    logger.trace(&quot;Added to daily income: {}, now: {}&quot;, date, newAmount);</span>
+                }
+            }
+<span class="nc" id="L124">        }</span>
+
+<span class="nc" id="L126">        return dailyIncome;</span>
+    }
+
+    public BigDecimal getTotalExpenses() {
+<span class="fc" id="L130">        List&lt;Transaction&gt; allTransactions = importService.getAllTransactions();</span>
+<span class="fc" id="L131">        return allTransactions.stream()</span>
+<span class="fc bfc" id="L132" title="All 2 branches covered.">                .filter(t -&gt; t.getType() == TransactionType.EXPENSE)</span>
+<span class="fc" id="L133">                .map(Transaction::getAmount)</span>
+<span class="fc" id="L134">                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+    }
+
+    public BigDecimal getTotalIncome() {
+<span class="fc" id="L138">        List&lt;Transaction&gt; allTransactions = importService.getAllTransactions();</span>
+<span class="fc" id="L139">        return allTransactions.stream()</span>
+<span class="fc bfc" id="L140" title="All 2 branches covered.">                .filter(t -&gt; t.getType() == TransactionType.INCOME)</span>
+<span class="fc" id="L141">                .map(Transaction::getAmount)</span>
+<span class="fc" id="L142">                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+    }
+
+    public BigDecimal getBalance() {
+<span class="fc" id="L146">        return getTotalIncome().subtract(getTotalExpenses());</span>
+    }
+
+    // Total budget management
+<span class="fc" id="L150">    private BigDecimal totalBudget = BigDecimal.ZERO;</span>
+    private LocalDate budgetStartDate;
+    private LocalDate budgetEndDate;
+    
+    /**
+     * Updates the total budget and budget period
+     * @param totalBudget The total budget amount
+     * @param startDate The start date of the budget period
+     * @param endDate The end date of the budget period
+     */
+    public void updateTotalBudget(BigDecimal totalBudget, LocalDate startDate, LocalDate endDate) {
+<span class="fc" id="L161">        logger.info(&quot;Updating total budget: amount={}, period={} to {}&quot;, </span>
+                   totalBudget, startDate, endDate);
+<span class="fc" id="L163">        this.totalBudget = totalBudget;</span>
+<span class="fc" id="L164">        this.budgetStartDate = startDate;</span>
+<span class="fc" id="L165">        this.budgetEndDate = endDate;</span>
+<span class="fc" id="L166">    }</span>
+    
+    /**
+     * Gets the total budget for the current period
+     * @return The total budget amount
+     */
+    public BigDecimal getTotalBudget() {
+<span class="fc" id="L173">        return totalBudget;</span>
+    }
+    
+    /**
+     * Gets the budget start date
+     * @return The budget start date
+     */
+    public LocalDate getBudgetStartDate() {
+<span class="fc" id="L181">        return budgetStartDate;</span>
+    }
+    
+    /**
+     * Gets the budget end date
+     * @return The budget end date
+     */
+    public LocalDate getBudgetEndDate() {
+<span class="fc" id="L189">        return budgetEndDate;</span>
+    }
+} 
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

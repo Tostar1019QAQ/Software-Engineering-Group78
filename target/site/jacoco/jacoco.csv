@@ -1,0 +1,40 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+finance-tracker,com.group78.financetracker.service,ReportGenerator,117,1515,13,43,29,273,12,35,0,18
+finance-tracker,com.group78.financetracker.service,DataStorageService,155,0,6,0,35,0,11,0,8,0
+finance-tracker,com.group78.financetracker.service,ReportGenerator.FinancialMetrics,0,24,0,0,0,9,0,1,0,1
+finance-tracker,com.group78.financetracker.service,BillService.new TypeReference() {...},6,0,0,0,1,0,1,0,1,0
+finance-tracker,com.group78.financetracker.service,ImportService,502,435,65,21,121,101,48,16,7,10
+finance-tracker,com.group78.financetracker.service,AIService,221,653,68,24,50,130,45,14,3,10
+finance-tracker,com.group78.financetracker.service,TransactionService,29,27,4,0,8,9,5,4,3,4
+finance-tracker,com.group78.financetracker.service,BillService,118,384,10,12,33,84,9,18,2,14
+finance-tracker,com.group78.financetracker.service,DashboardService,270,103,24,4,56,24,18,13,6,11
+finance-tracker,com.group78.financetracker.service,ImportService.ImportError,15,0,0,0,6,0,3,0,3,0
+finance-tracker,com.group78.financetracker.service,AIService.new HashMap() {...},0,73,0,0,0,16,0,1,0,1
+finance-tracker,com.group78.financetracker.model,TransactionType,6,32,0,0,2,7,2,2,2,2
+finance-tracker,com.group78.financetracker.model,RecurrencePattern,52,0,0,0,11,0,4,0,4,0
+finance-tracker,com.group78.financetracker.model,BillStatus,45,0,0,0,10,0,4,0,4,0
+finance-tracker,com.group78.financetracker.model,Transaction,80,59,0,0,10,19,10,9,10,9
+finance-tracker,com.group78.financetracker.model,BillReminder,165,0,10,0,42,0,29,0,24,0
+finance-tracker,com.group78.financetracker.model,RecurrencePattern.new RecurrencePattern() {...},10,0,0,0,2,0,2,0,2,0
+finance-tracker,com.group78.financetracker.model,RecurrencePattern.new RecurrencePattern() {...},10,0,0,0,2,0,2,0,2,0
+finance-tracker,com.group78.financetracker.model,RecurrencePattern.new RecurrencePattern() {...},10,0,0,0,2,0,2,0,2,0
+finance-tracker,com.group78.financetracker.model,RecurrencePattern.new RecurrencePattern() {...},10,0,0,0,2,0,2,0,2,0
+finance-tracker,com.group78.financetracker.model,RecurrencePattern.new RecurrencePattern() {...},10,0,0,0,2,0,2,0,2,0
+finance-tracker,com.group78.financetracker.model,Bill,26,133,3,11,9,39,7,18,4,14
+finance-tracker,com.group78.financetracker.model,Budget,142,0,4,0,31,0,15,0,13,0
+finance-tracker,com.group78.financetracker,FinanceTrackerApp,27,0,0,0,12,0,3,0,3,0
+finance-tracker,com.group78.financetracker.ui,BillsPanel,1257,0,28,0,257,0,34,0,19,0
+finance-tracker,com.group78.financetracker.ui,BudgetPanel.new DefaultTableModel() {...},24,0,4,0,5,0,5,0,3,0
+finance-tracker,com.group78.financetracker.ui,BudgetPanel.new MouseAdapter() {...},110,0,16,0,17,0,10,0,2,0
+finance-tracker,com.group78.financetracker.ui,BillsPanel.ButtonRenderer,20,0,0,0,7,0,2,0,2,0
+finance-tracker,com.group78.financetracker.ui,BillsPanel.new DefaultTableModel() {...},18,0,4,0,2,0,4,0,2,0
+finance-tracker,com.group78.financetracker.ui,BillsPanel.new MouseAdapter() {...},88,0,18,0,18,0,11,0,2,0
+finance-tracker,com.group78.financetracker.ui,BudgetPanel.ButtonRenderer,9,0,0,0,2,0,2,0,2,0
+finance-tracker,com.group78.financetracker.ui,ImportPanel,1321,0,40,0,269,0,44,0,24,0
+finance-tracker,com.group78.financetracker.ui,MainFrame,283,0,0,0,57,0,8,0,8,0
+finance-tracker,com.group78.financetracker.ui,ImportPanel.new DropTargetListener() {...},91,0,8,0,27,0,10,0,6,0
+finance-tracker,com.group78.financetracker.ui,AIPanel,2499,0,140,0,469,0,98,0,28,0
+finance-tracker,com.group78.financetracker.ui,MainFrame.new MouseAdapter() {...},29,0,0,0,5,0,3,0,3,0
+finance-tracker,com.group78.financetracker.ui,BudgetPanel,2543,0,132,0,516,0,101,0,33,0
+finance-tracker,com.group78.financetracker.ui,BudgetPanel.ProgressBarRenderer,31,0,2,0,11,0,3,0,2,0
+finance-tracker,com.group78.financetracker.ui,DashboardPanel,1113,0,40,0,244,0,42,0,22,0

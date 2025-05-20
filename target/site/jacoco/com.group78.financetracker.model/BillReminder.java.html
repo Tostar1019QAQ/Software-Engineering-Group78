@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BillReminder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">finance-tracker</a> &gt; <a href="index.source.html" class="el_package">com.group78.financetracker.model</a> &gt; <span class="el_source">BillReminder.java</span></div><h1>BillReminder.java</h1><pre class="source lang-java linenums">package com.group78.financetracker.model;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+public class BillReminder {
+    private String id;
+    private String name;
+    private BigDecimal amount;
+    private LocalDate dueDate;
+    private String category;
+    private BillStatus status;
+    private String description;
+    private boolean isRecurring;
+    private RecurrencePattern recurrencePattern;
+
+    public BillReminder(String id, String name, BigDecimal amount, LocalDate dueDate,
+                       String category, String description, boolean isRecurring,
+<span class="nc" id="L19">                       RecurrencePattern recurrencePattern) {</span>
+<span class="nc" id="L20">        this.id = id;</span>
+<span class="nc" id="L21">        this.name = name;</span>
+<span class="nc" id="L22">        this.amount = amount;</span>
+<span class="nc" id="L23">        this.dueDate = dueDate;</span>
+<span class="nc" id="L24">        this.category = category;</span>
+<span class="nc" id="L25">        this.status = BillStatus.PENDING;</span>
+<span class="nc" id="L26">        this.description = description;</span>
+<span class="nc" id="L27">        this.isRecurring = isRecurring;</span>
+<span class="nc" id="L28">        this.recurrencePattern = recurrencePattern;</span>
+<span class="nc" id="L29">    }</span>
+
+    // 检查账单是否即将到期（3天内）
+    public boolean isDueSoon() {
+<span class="nc" id="L33">        LocalDate now = LocalDate.now();</span>
+<span class="nc" id="L34">        LocalDate threeDaysFromNow = now.plusDays(3);</span>
+<span class="nc bnc" id="L35" title="All 4 branches missed.">        return !dueDate.isBefore(now) &amp;&amp; !dueDate.isAfter(threeDaysFromNow);</span>
+    }
+
+    // 检查账单是否已过期
+    public boolean isOverdue() {
+<span class="nc bnc" id="L40" title="All 4 branches missed.">        return LocalDate.now().isAfter(dueDate) &amp;&amp; status == BillStatus.PENDING;</span>
+    }
+
+    // 标记账单为已支付
+    public void markAsPaid() {
+<span class="nc" id="L45">        this.status = BillStatus.PAID;</span>
+<span class="nc bnc" id="L46" title="All 2 branches missed.">        if (isRecurring) {</span>
+<span class="nc" id="L47">            generateNextBill();</span>
+        }
+<span class="nc" id="L49">    }</span>
+
+    // 生成下一个周期的账单
+    private BillReminder generateNextBill() {
+<span class="nc" id="L53">        LocalDate nextDueDate = recurrencePattern.getNextDate(dueDate);</span>
+<span class="nc" id="L54">        return new BillReminder(</span>
+<span class="nc" id="L55">            generateNextId(),</span>
+            this.name,
+            this.amount,
+            nextDueDate,
+            this.category,
+            this.description,
+            this.isRecurring,
+            this.recurrencePattern
+        );
+    }
+
+    private String generateNextId() {
+        // 简单的ID生成逻辑，实际应用中可能需要更复杂的实现
+<span class="nc" id="L68">        return id + &quot;_next&quot;;</span>
+    }
+
+    // Getters
+<span class="nc" id="L72">    public String getId() { return id; }</span>
+<span class="nc" id="L73">    public String getName() { return name; }</span>
+<span class="nc" id="L74">    public BigDecimal getAmount() { return amount; }</span>
+<span class="nc" id="L75">    public LocalDate getDueDate() { return dueDate; }</span>
+<span class="nc" id="L76">    public String getCategory() { return category; }</span>
+<span class="nc" id="L77">    public BillStatus getStatus() { return status; }</span>
+<span class="nc" id="L78">    public String getDescription() { return description; }</span>
+<span class="nc" id="L79">    public boolean isRecurring() { return isRecurring; }</span>
+<span class="nc" id="L80">    public RecurrencePattern getRecurrencePattern() { return recurrencePattern; }</span>
+
+    // Setters
+<span class="nc" id="L83">    public void setId(String id) { this.id = id; }</span>
+<span class="nc" id="L84">    public void setName(String name) { this.name = name; }</span>
+<span class="nc" id="L85">    public void setAmount(BigDecimal amount) { this.amount = amount; }</span>
+<span class="nc" id="L86">    public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }</span>
+<span class="nc" id="L87">    public void setCategory(String category) { this.category = category; }</span>
+<span class="nc" id="L88">    public void setStatus(BillStatus status) { this.status = status; }</span>
+<span class="nc" id="L89">    public void setDescription(String description) { this.description = description; }</span>
+<span class="nc" id="L90">    public void setRecurring(boolean recurring) { isRecurring = recurring; }</span>
+    public void setRecurrencePattern(RecurrencePattern recurrencePattern) { 
+<span class="nc" id="L92">        this.recurrencePattern = recurrencePattern; </span>
+<span class="nc" id="L93">    }</span>
+} 
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

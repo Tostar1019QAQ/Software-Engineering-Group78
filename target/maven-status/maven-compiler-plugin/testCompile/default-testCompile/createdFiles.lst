@@ -1,0 +1,5 @@
+com\group78\financetracker\service\AIServiceTest.class
+com\group78\financetracker\service\ReportGeneratorTest.class
+com\group78\financetracker\service\BudgetServiceTest.class
+com\group78\financetracker\service\BillServiceTest.class
+com\group78\financetracker\service\TransactionServiceTest.class
