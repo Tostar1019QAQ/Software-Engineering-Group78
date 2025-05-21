@@ -35,17 +35,16 @@ A comprehensive personal finance management application built with Java and Swin
 1. Clone the repository:
    ```
    git clone https://github.com/Tostar1019QAQ/Software-Engineering-Group78.git
-   cd finance-tracker
    ```
 
 2. Build with Maven:
    ```
-   mvn clean package
+   mvn clean install
    ```
 
 3. Run the application:
    ```
-   java -jar target/finance-tracker-1.0-SNAPSHOT-jar-with-dependencies.jar
+   mvn exec:java
    ```
 
 ## Configuration
