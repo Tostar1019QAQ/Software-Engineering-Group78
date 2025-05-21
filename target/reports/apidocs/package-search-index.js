@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"com.group78.financetracker"},{"l":"com.group78.financetracker.model"},{"l":"com.group78.financetracker.service"},{"l":"com.group78.financetracker.ui"}];updateSearchResults();
