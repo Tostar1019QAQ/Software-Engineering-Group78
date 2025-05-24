@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.group78.financetracker.service.TransactionServiceTest" time="0.087" tests="3" errors="0" skipped="1" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="com.group78.financetracker.service.TransactionServiceTest" time="0.133" tests="3" errors="0" skipped="1" failures="0">
   <properties>
     <property name="java.specification.version" value="21"/>
     <property name="sun.cpu.isalist" value="amd64"/>
@@ -15,7 +15,7 @@
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
     <property name="user.country" value="CN"/>
     <property name="sun.boot.library.path" value="C:\Program Files\Java\jdk-21\bin"/>
-    <property name="sun.java.command" value="C:\Users\18735\AppData\Local\Temp\surefire18318371322928712100\surefirebooter-20250520183309040_3.jar C:\Users\18735\AppData\Local\Temp\surefire18318371322928712100 2025-05-20T18-33-08_945-jvmRun1 surefire-20250520183309040_1tmp surefire_0-20250520183309040_2tmp"/>
+    <property name="sun.java.command" value="C:\Users\18735\AppData\Local\Temp\surefire16832707236130140070\surefirebooter-20250524152734407_3.jar C:\Users\18735\AppData\Local\Temp\surefire16832707236130140070 2025-05-24T15-27-34_181-jvmRun1 surefire-20250524152734407_1tmp surefire_0-20250524152734407_2tmp"/>
     <property name="jdk.debug" value="release"/>
     <property name="surefire.test.class.path" value="C:\Users\18735\Desktop\Wy_branch\Software-Engineering-Group78\target\test-classes;C:\Users\18735\Desktop\Wy_branch\Software-Engineering-Group78\target\classes;C:\Users\18735\.m2\repository\com\formdev\flatlaf\3.4\flatlaf-3.4.jar;C:\Users\18735\.m2\repository\com\toedter\jcalendar\1.4\jcalendar-1.4.jar;C:\Users\18735\.m2\repository\com\fasterxml\jackson\core\jackson-databind\2.15.2\jackson-databind-2.15.2.jar;C:\Users\18735\.m2\repository\com\fasterxml\jackson\core\jackson-annotations\2.15.2\jackson-annotations-2.15.2.jar;C:\Users\18735\.m2\repository\com\fasterxml\jackson\core\jackson-core\2.15.2\jackson-core-2.15.2.jar;C:\Users\18735\.m2\repository\com\fasterxml\jackson\datatype\jackson-datatype-jsr310\2.15.2\jackson-datatype-jsr310-2.15.2.jar;C:\Users\18735\.m2\repository\org\apache\commons\commons-csv\1.10.0\commons-csv-1.10.0.jar;C:\Users\18735\.m2\repository\org\apache\poi\poi\5.2.3\poi-5.2.3.jar;C:\Users\18735\.m2\repository\commons-codec\commons-codec\1.15\commons-codec-1.15.jar;C:\Users\18735\.m2\repository\org\apache\commons\commons-collections4\4.4\commons-collections4-4.4.jar;C:\Users\18735\.m2\repository\commons-io\commons-io\2.11.0\commons-io-2.11.0.jar;C:\Users\18735\.m2\repository\com\zaxxer\SparseBitSet\1.2\SparseBitSet-1.2.jar;C:\Users\18735\.m2\repository\org\apache\logging\log4j\log4j-api\2.18.0\log4j-api-2.18.0.jar;C:\Users\18735\.m2\repository\org\apache\poi\poi-ooxml\5.2.3\poi-ooxml-5.2.3.jar;C:\Users\18735\.m2\repository\org\apache\poi\poi-ooxml-lite\5.2.3\poi-ooxml-lite-5.2.3.jar;C:\Users\18735\.m2\repository\org\apache\xmlbeans\xmlbeans\5.1.1\xmlbeans-5.1.1.jar;C:\Users\18735\.m2\repository\org\apache\commons\commons-compress\1.21\commons-compress-1.21.jar;C:\Users\18735\.m2\repository\com\github\virtuald\curvesapi\1.07\curvesapi-1.07.jar;C:\Users\18735\.m2\repository\org\apache\commons\commons-math3\3.6.1\commons-math3-3.6.1.jar;C:\Users\18735\.m2\repository\org\junit\jupiter\junit-jupiter\5.9.2\junit-jupiter-5.9.2.jar;C:\Users\18735\.m2\repository\org\junit\jupiter\junit-jupiter-api\5.9.2\junit-jupiter-api-5.9.2.jar;C:\Users\18735\.m2\repository\org\opentest4j\opentest4j\1.2.0\opentest4j-1.2.0.jar;C:\Users\18735\.m2\repository\org\junit\platform\junit-platform-commons\1.9.2\junit-platform-commons-1.9.2.jar;C:\Users\18735\.m2\repository\org\apiguardian\apiguardian-api\1.1.2\apiguardian-api-1.1.2.jar;C:\Users\18735\.m2\repository\org\junit\jupiter\junit-jupiter-params\5.9.2\junit-jupiter-params-5.9.2.jar;C:\Users\18735\.m2\repository\org\junit\jupiter\junit-jupiter-engine\5.9.2\junit-jupiter-engine-5.9.2.jar;C:\Users\18735\.m2\repository\org\junit\platform\junit-platform-engine\1.9.2\junit-platform-engine-1.9.2.jar;C:\Users\18735\.m2\repository\org\mockito\mockito-core\5.3.1\mockito-core-5.3.1.jar;C:\Users\18735\.m2\repository\net\bytebuddy\byte-buddy\1.14.4\byte-buddy-1.14.4.jar;C:\Users\18735\.m2\repository\net\bytebuddy\byte-buddy-agent\1.14.4\byte-buddy-agent-1.14.4.jar;C:\Users\18735\.m2\repository\org\objenesis\objenesis\3.3\objenesis-3.3.jar;C:\Users\18735\.m2\repository\org\mockito\mockito-junit-jupiter\5.3.1\mockito-junit-jupiter-5.3.1.jar;C:\Users\18735\.m2\repository\org\slf4j\slf4j-api\1.7.36\slf4j-api-1.7.36.jar;C:\Users\18735\.m2\repository\org\slf4j\slf4j-simple\1.7.36\slf4j-simple-1.7.36.jar;C:\Users\18735\.m2\repository\org\jfree\jfreechart\1.5.4\jfreechart-1.5.4.jar;C:\Users\18735\.m2\repository\org\apache\httpcomponents\client5\httpclient5\5.2.1\httpclient5-5.2.1.jar;C:\Users\18735\.m2\repository\org\apache\httpcomponents\core5\httpcore5\5.2\httpcore5-5.2.jar;C:\Users\18735\.m2\repository\org\apache\httpcomponents\core5\httpcore5-h2\5.2\httpcore5-h2-5.2.jar;"/>
     <property name="sun.cpu.endian" value="little"/>
@@ -30,7 +30,7 @@
     <property name="line.separator" value="&#10;"/>
     <property name="java.vm.specification.vendor" value="Oracle Corporation"/>
     <property name="java.specification.name" value="Java Platform API Specification"/>
-    <property name="surefire.real.class.path" value="C:\Users\18735\AppData\Local\Temp\surefire18318371322928712100\surefirebooter-20250520183309040_3.jar"/>
+    <property name="surefire.real.class.path" value="C:\Users\18735\AppData\Local\Temp\surefire16832707236130140070\surefirebooter-20250524152734407_3.jar"/>
     <property name="user.script" value=""/>
     <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
     <property name="java.runtime.version" value="21.0.2+13-LTS-58"/>
@@ -50,7 +50,7 @@
     <property name="java.vm.specification.name" value="Java Virtual Machine Specification"/>
     <property name="sun.os.patch.level" value=""/>
     <property name="native.encoding" value="UTF-8"/>
-    <property name="java.library.path" value="C:\Program Files\Java\jdk-21\bin;C:\WINDOWS\Sun\Java\bin;C:\WINDOWS\system32;C:\WINDOWS;D:\VMware\bin\;C:\Users\18735\AppData\Local\Programs\Python\Python310\Scripts\;C:\Users\18735\AppData\Local\Programs\Python\Python310\;C:\Users\18735\AppData\Local\Programs\Python\Python312\Scripts\;C:\Users\18735\AppData\Local\Programs\Python\Python312\;C:\Program Files\MySQL\MySQL Shell 8.0\bin\;C:\Users\18735\AppData\Local\Microsoft\WindowsApps;I:\Bandizip\;D:\Microsoft VS Code\bin;C:\Program Files\Java\jdk-21\bin;C:\Users\18735\AppData\Roaming\npm;D:\apache-activemq-5.16.4\bin;I:\cursor\resources\app\bin;D:\Git\cmd;C:\Program Files\NVIDIA Corporation\NVIDIA App\NvDLISR;C:\WINDOWS;C:\WINDOWS\system32;C:\WINDOWS\System32\OpenSSH;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0;C:\Users\18735\AppData\Local\Programs\Python\Python310\Scripts\;C:\Users\18735\AppData\Local\Programs\Python\Python310\;C:\Users\18735\AppData\Local\Programs\Python\Python312\Scripts\;C:\Users\18735\AppData\Local\Programs\Python\Python312\;C:\Program Files\MySQL\MySQL Shell 8.0\bin\;C:\Users\18735\AppData\Local\Microsoft\WindowsApps;I:\Bandizip\;D:\Microsoft VS Code\bin;C:\Program Files\Java\jdk-21\bin;C:\Users\18735\AppData\Roaming\npm;D:\apache-activemq-5.16.4\bin;D:\apache-maven-3.9.9\bin;C:\Users\18735\AppData\Local\Programs\cursor\resources\app\bin;."/>
+    <property name="java.library.path" value="C:\Program Files\Java\jdk-21\bin;C:\WINDOWS\Sun\Java\bin;C:\WINDOWS\system32;C:\WINDOWS;D:\VMware\bin\;C:\Users\18735\AppData\Local\Programs\Python\Python310\Scripts\;C:\Users\18735\AppData\Local\Programs\Python\Python310\;C:\Users\18735\AppData\Local\Programs\Python\Python312\Scripts\;C:\Users\18735\AppData\Local\Programs\Python\Python312\;C:\Program Files\MySQL\MySQL Shell 8.0\bin\;C:\Users\18735\AppData\Local\Microsoft\WindowsApps;I:\Bandizip\;D:\Microsoft VS Code\bin;C:\Program Files\Java\jdk-21\bin;C:\Users\18735\AppData\Roaming\npm;D:\apache-activemq-5.16.4\bin;I:\cursor\resources\app\bin;D:\Git\cmd;C:\Program Files\NVIDIA Corporation\NVIDIA App\NvDLISR;C:\WINDOWS;C:\WINDOWS\system32;C:\WINDOWS\System32\OpenSSH;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0;C:\Users\18735\AppData\Local\Programs\Python\Python310\Scripts\;C:\Users\18735\AppData\Local\Programs\Python\Python310\;C:\Users\18735\AppData\Local\Programs\Python\Python312\Scripts\;C:\Users\18735\AppData\Local\Programs\Python\Python312\;C:\Program Files\MySQL\MySQL Shell 8.0\bin\;C:\Users\18735\AppData\Local\Microsoft\WindowsApps;I:\Bandizip\;D:\Microsoft VS Code\bin;C:\Program Files\Java\jdk-21\bin;C:\Users\18735\AppData\Roaming\npm;D:\apache-activemq-5.16.4\bin;D:\apache-maven-3.9.9\bin;C:\Users\18735\AppData\Local\Programs\cursor\resources\app\bin;c:\Users\18735\AppData\Roaming\Code\User\globalStorage\github.copilot-chat\debugCommand;."/>
     <property name="java.vm.info" value="mixed mode, sharing"/>
     <property name="stderr.encoding" value="UTF-8"/>
     <property name="java.vendor" value="Oracle Corporation"/>
@@ -58,23 +58,23 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="65.0"/>
   </properties>
-  <testcase name="testGetMonthlyTotals" classname="com.group78.financetracker.service.TransactionServiceTest" time="0.077">
-    <system-err><![CDATA[2025-05-20 18:33:11:654 +0800 [main] INFO TransactionService - TransactionService initialized
-2025-05-20 18:33:11:665 +0800 [main] INFO TransactionService - Added transaction: Income
-2025-05-20 18:33:11:665 +0800 [main] INFO TransactionService - Added transaction: Housing
-2025-05-20 18:33:11:665 +0800 [main] INFO TransactionService - Added transaction: Food
-2025-05-20 18:33:11:666 +0800 [main] INFO TransactionService - TransactionService initialized
+  <testcase name="testGetMonthlyTotals" classname="com.group78.financetracker.service.TransactionServiceTest" time="0.12">
+    <system-err><![CDATA[2025-05-24 15:27:39:885 +0800 [main] INFO TransactionService - TransactionService initialized
+2025-05-24 15:27:39:905 +0800 [main] INFO TransactionService - Added transaction: Income
+2025-05-24 15:27:39:906 +0800 [main] INFO TransactionService - Added transaction: Housing
+2025-05-24 15:27:39:906 +0800 [main] INFO TransactionService - Added transaction: Food
+2025-05-24 15:27:39:907 +0800 [main] INFO TransactionService - TransactionService initialized
 ]]></system-err>
   </testcase>
   <testcase name="testGetTransactionsByCategory" classname="com.group78.financetracker.service.TransactionServiceTest" time="0.0">
     <skipped message="Due to complex interaction logic with ImportService, this test is temporarily disabled. The codebase uses multiple ways to manage transaction data, which requires refactoring TransactionService and using a dedicated test database to solve this issue."/>
   </testcase>
-  <testcase name="testAddTransaction" classname="com.group78.financetracker.service.TransactionServiceTest" time="0.008">
-    <system-err><![CDATA[2025-05-20 18:33:11:686 +0800 [main] INFO TransactionService - TransactionService initialized
-2025-05-20 18:33:11:687 +0800 [main] INFO TransactionService - Added transaction: Income
-2025-05-20 18:33:11:688 +0800 [main] INFO TransactionService - Added transaction: Housing
-2025-05-20 18:33:11:688 +0800 [main] INFO TransactionService - Added transaction: Food
-2025-05-20 18:33:11:694 +0800 [main] INFO TransactionService - Added transaction: Test Category
+  <testcase name="testAddTransaction" classname="com.group78.financetracker.service.TransactionServiceTest" time="0.009">
+    <system-err><![CDATA[2025-05-24 15:27:39:934 +0800 [main] INFO TransactionService - TransactionService initialized
+2025-05-24 15:27:39:935 +0800 [main] INFO TransactionService - Added transaction: Income
+2025-05-24 15:27:39:935 +0800 [main] INFO TransactionService - Added transaction: Housing
+2025-05-24 15:27:39:936 +0800 [main] INFO TransactionService - Added transaction: Food
+2025-05-24 15:27:39:941 +0800 [main] INFO TransactionService - Added transaction: Test Category
 ]]></system-err>
   </testcase>
 </testsuite>

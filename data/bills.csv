@@ -15,7 +15,7 @@ ea9d8825-533c-4ddf-be4f-bceeb0e19aaf,水电费,300,2025-05-23,银行卡,true,tru
 ea14af3f-7740-4b17-afd7-8324d452c6ad,网络费,200,2025-06-19,微信支付,false,true
 631312c3-34a9-4c88-a7f7-a1696ab6faf4,租房费用,2000,2025-06-04,支付宝,true,false
 1b98bcca-651e-4767-b6ef-025e02ae2ba2,手机月费,150,2025-05-30,银行卡,false,true
-6ae24568-772b-4a03-bd39-bd32cf96b532,水电费,300,2025-05-23,银行卡,true,true
+6ae24568-772b-4a03-bd39-bd32cf96b532,水电费,300,2025-05-30,Credit Card,true,false
 91ef72ba-e38b-46b5-a606-6e918195949e,网络费,200,2025-06-19,微信支付,false,true
 2b96101c-0e53-4907-8cd7-4ba67142d0b1,租房费用,2000,2025-06-04,支付宝,true,false
 f2a1fd70-dc83-4e29-8741-e0499b95e70f,手机月费,150,2025-05-30,银行卡,false,true
@@ -27,7 +27,6 @@ a991d87c-8988-4b8d-ab80-f3a3c8336098,手机月费,150,2025-05-30,银行卡,false
 dd7a4711-55f7-4a95-9976-bc286922f8ff,网络费,200,2025-06-19,微信支付,false,true
 6154ed97-26ca-4388-a264-b2314fbc36c3,租房费用,2000,2025-06-04,支付宝,true,false
 187d2a0f-a110-49d0-83c6-179494ddc1ab,手机月费,150,2025-05-30,银行卡,false,true
-8febf117-4f2d-4a11-b1a2-a8338b98ae93,水电费,300,2025-05-23,银行卡,true,true
 de2524cf-5b5d-4505-86cd-a2efb96f30a0,网络费,200,2025-06-19,微信支付,false,true
 67bbcd10-1a23-49d6-a23a-a1e67a1cd937,租房费用,2000,2025-06-04,支付宝,true,false
 d8dc3d43-08fe-4f2d-acde-1cf55529058e,手机月费,150,2025-05-30,银行卡,false,true
@@ -47,3 +46,32 @@ d4ddd5d7-4513-42e0-9114-fed84951d41a,Utility Bill,300,2025-05-23,Bank Card,true,
 599f83b5-0d63-48b3-8645-4fd63f64a0c8,Internet Fee,200,2025-06-19,WeChat Pay,false,true
 042ded27-fdf0-420b-b56b-ca43cd50ad93,Rent Payment,2000,2025-06-04,Alipay,true,false
 5aa01f76-a0c5-4c45-a215-333831143ca3,Monthly Phone Bill,150,2025-05-30,Bank Card,false,true
+bf39fd08-51b9-4d34-a6f1-5fdc002f2a21,Utility Bill,300,2025-05-27,Bank Card,true,true
+59e2ae38-1804-435e-b22f-570c472cf13b,Internet Fee,200,2025-06-23,WeChat Pay,false,true
+0fdec7b7-d54e-4d49-bc81-a31406dfb9e2,Rent Payment,2000,2025-06-08,Alipay,true,false
+52915a3d-5317-4b67-af20-669d4e59bc71,Monthly Phone Bill,150,2025-06-03,Bank Card,false,true
+6160532c-2bbb-45c7-a2d9-a8912404a03d,Utility Bill,300,2025-05-27,Bank Card,true,true
+a6bc1946-ade5-4d2b-9ef5-f7163b26cdc4,Internet Fee,200,2025-06-23,WeChat Pay,false,true
+6fc9a335-747e-41ab-898a-ac507def474e,Rent Payment,2000,2025-06-08,Alipay,true,false
+ffab9268-fabd-4f97-9d89-e11ec1270d17,Monthly Phone Bill,150,2025-06-03,Bank Card,false,true
+cc7b6092-2671-4382-8071-971b39b20640,Utility Bill,300,2025-05-27,Bank Card,true,true
+7dfd2e6f-ea5d-4c6b-82e5-4dab5c775af9,Internet Fee,200,2025-06-23,WeChat Pay,false,true
+6f735b2b-8bb0-4713-b88f-b771c3282b0b,Rent Payment,2000,2025-06-08,Alipay,true,false
+b2f7317f-8705-496e-beed-14944afaa4ef,Monthly Phone Bill,150,2025-06-03,Bank Card,false,true
+157cb82b-2315-4ccb-a3a6-2e297290076a,Utility Bill,300,2025-05-27,Bank Card,true,true
+0eebad59-80f7-454a-a712-fc48ee2eb974,Internet Fee,200,2025-06-23,WeChat Pay,false,true
+ae389006-4580-4376-9660-8c239f6b2ad9,Rent Payment,2000,2025-06-08,Alipay,true,false
+8e949b91-531a-4336-8dca-29888ded1339,Monthly Phone Bill,150,2025-06-03,Bank Card,false,true
+dd971373-5e2f-4d9c-bd66-1e44f761806a,Utility Bill,300,2025-05-29,Bank Card,true,true
+133b888b-fca4-4f4e-b4e7-efc25ab20134,Internet Fee,200,2025-06-23,WeChat Pay,false,true
+ac6a7ecc-8080-493a-993e-70433b4f1629,Rent Payment,2000,2025-06-08,Alipay,true,false
+fab0aad4-d2e1-49e6-807b-7eebc9db5d3d,Monthly Phone Bill,150,2025-06-03,Bank Card,false,true
+2264576b-5cf0-4e9f-ace1-ca7282660bd5,Utility Bill,300,2025-05-27,Bank Card,true,true
+fc77ee05-7478-425a-bed3-fed95638e898,Internet Fee,200,2025-06-23,WeChat Pay,false,true
+17e922cd-83da-476a-ba7c-238d524a7a3f,Rent Payment,2000,2025-06-08,Alipay,true,false
+95669f30-ed1a-4c9b-8d28-9c620cf101e2,Monthly Phone Bill,150,2025-06-03,Bank Card,false,true
+45ebb92a-457e-48ba-8a51-9d29cbc80de6,Utility Bill,300,2025-05-27,Bank Card,true,true
+ca940754-33f7-4c59-8ec3-02fb30b7f4ee,Internet Fee,200,2025-06-23,WeChat Pay,false,true
+b4e8f6d8-eee2-43e2-9089-0a2d81900ff7,Rent Payment,2000,2025-06-08,Alipay,true,false
+84cecaf3-abfd-4f45-b9de-39fd32f2ff6a,Monthly Phone Bill,150,2025-06-03,Bank Card,false,true
+fc5d4daa-a9f7-440c-b5dd-766f71d37832,1,1000,2025-05-30,Bank Transfer,false,false

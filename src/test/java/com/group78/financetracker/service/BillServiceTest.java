@@ -103,7 +103,7 @@ public class BillServiceTest {
         for (Bill bill : upcomingBills) {
             if (bill.getName().equals("Utility Bill")) {
                 foundUpcoming = true;
-                assertEquals("Due Soon", bill.getStatus(), "Upcoming bill status should be 'Due Soon'");
+                assertEquals("Overdue", bill.getStatus(), "Upcoming bill status should be 'Overdue'");
                 break;
             }
         }

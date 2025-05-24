@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.group78.financetracker.service.AIServiceTest
 -------------------------------------------------------------------------------
-Tests run: 5, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 0.619 s -- in com.group78.financetracker.service.AIServiceTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 1.456 s -- in com.group78.financetracker.service.AIServiceTest

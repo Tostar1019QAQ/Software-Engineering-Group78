@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.group78.financetracker.service.ReportGeneratorTest
 -------------------------------------------------------------------------------
-Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.994 s -- in com.group78.financetracker.service.ReportGeneratorTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.737 s -- in com.group78.financetracker.service.ReportGeneratorTest
