@@ -44,7 +44,7 @@ public class AIPanel extends JPanel {
     private JButton analyzeButton;
     private JButton sendButton;
     private JLabel statusLabel;
-    private JTextField apiKeyField;
+    private JPasswordField apiKeyField;
     private JPanel settingsPanel;
     private JComboBox<String> analysisTypeComboBox;
     private JTextArea userInputArea;
@@ -75,6 +75,13 @@ public class AIPanel extends JPanel {
         setBorder(new EmptyBorder(20, 20, 20, 20));
         
         initComponents();
+        
+        // 设置初始API密钥
+        String currentApiKey = aiService.getApiKey();
+        if (currentApiKey != null && !currentApiKey.isEmpty()) {
+            apiKeyField.setText(currentApiKey);
+        }
+        
         layoutComponents();
     }
     
@@ -150,12 +157,15 @@ public class AIPanel extends JPanel {
         statusLabel.setForeground(Color.GRAY);
         
         // API settings area
-        apiKeyField = new JTextField(20);
-        apiKeyField.setText("sk-5437453fe5544771b8ca5196cfac9bc5");  // Pre-populate with the provided API key
+        apiKeyField = new JPasswordField(20);
         JButton saveApiKeyButton = new JButton("Save API Key");
         saveApiKeyButton.addActionListener(e -> {
-            aiService.setApiKey(apiKeyField.getText().trim());
-            JOptionPane.showMessageDialog(this, "API key updated", "Settings Saved", JOptionPane.INFORMATION_MESSAGE);
+            char[] passwordChars = apiKeyField.getPassword();
+            String apiKey = new String(passwordChars);
+            aiService.setApiKey(apiKey.trim());
+            // 清除内存中的密码字符数组
+            java.util.Arrays.fill(passwordChars, '0');
+            JOptionPane.showMessageDialog(this, "API key updated and encrypted", "Settings Saved", JOptionPane.INFORMATION_MESSAGE);
         });
         
         // Settings panel

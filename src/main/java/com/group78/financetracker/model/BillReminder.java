@@ -64,7 +64,6 @@ public class BillReminder {
     }
 
     private String generateNextId() {
-        // 简单的ID生成逻辑，实际应用中可能需要更复杂的实现
         return id + "_next";
     }
 
