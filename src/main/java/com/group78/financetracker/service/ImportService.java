@@ -61,18 +61,15 @@ public class ImportService {
             File defaultFile = new File(DEFAULT_DATA_FILE);
             if (defaultFile.exists()) {
                 logger.info("Default transactions file exists, loading...");
-                // Clear existing transactions before loading
                 transactions.clear();
-                
                 List<Transaction> defaultTransactions = importFromCSV(DEFAULT_DATA_FILE);
                 logger.info("Loaded {} default transactions", defaultTransactions.size());
-                
-                // Print first few transactions for debugging
+
                 int count = 0;
                 for (Transaction t : transactions) {
                     if (count++ < 5) {
-                        logger.debug("Sample transaction: {} - {} - {}", 
-                                   t.getDescription(), t.getAmount(), t.getDateTime().toLocalDate());
+                        logger.debug("Sample transaction: {} - {} - {}",
+                                t.getDescription(), t.getAmount(), t.getDateTime().toLocalDate());
                     }
                 }
             } else {
@@ -113,22 +110,22 @@ public class ImportService {
     public List<Transaction> importFromCSV(String filePath) throws IOException {
         List<Transaction> importedTransactions = new ArrayList<>();
         importErrors.clear();
-        
+
         try (FileReader reader = new FileReader(filePath);
              CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT
-                 .withFirstRecordAsHeader()
-                 .withIgnoreHeaderCase()
-                 .withTrim())) {
-            
+                     .withFirstRecordAsHeader()
+                     .withIgnoreHeaderCase()
+                     .withTrim())) {
+
             int recordNumber = 1;
             List<Transaction> batch = new ArrayList<>();
-            
+
             for (CSVRecord record : csvParser) {
                 try {
                     validateRecord(record);
                     Transaction transaction = parseTransaction(record);
                     batch.add(transaction);
-                    
+
                     if (batch.size() >= BATCH_SIZE) {
                         importedTransactions.addAll(batch);
                         transactions.addAll(batch);
@@ -141,22 +138,23 @@ public class ImportService {
                 }
                 recordNumber++;
             }
-            
-            // Process the last batch
+
             if (!batch.isEmpty()) {
                 importedTransactions.addAll(batch);
                 transactions.addAll(batch);
             }
         }
-        
-        // If this is not the default file, save the combined data
+
         if (!filePath.equals(DEFAULT_DATA_FILE)) {
             saveTransactionsToFile();
         }
-        
+
+        // ✅ 新增日志功能：记录导入成功的数量
+        logger.info("导入成功，共导入 {} 条记录", importedTransactions.size());
+
         return importedTransactions;
     }
-    
+
     private void saveTransactionsToFile() {
         try {
             File defaultFile = new File(DEFAULT_DATA_FILE);
@@ -164,15 +162,14 @@ public class ImportService {
             if (!directory.exists()) {
                 directory.mkdirs();
             }
-            
-            // Sort transactions by date for better readability
+
             List<Transaction> sortedTransactions = new ArrayList<>(transactions);
             sortedTransactions.sort(Comparator.comparing(Transaction::getDateTime));
-            
+
             try (FileWriter writer = new FileWriter(DEFAULT_DATA_FILE);
                  CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT
-                     .withHeader("Date", "Description", "Amount", "Category", "Payment Method", "Currency"))) {
-                
+                         .withHeader("Date", "Description", "Amount", "Category", "Payment Method", "Currency"))) {
+
                 for (Transaction transaction : sortedTransactions) {
                     String date = transaction.getDateTime().toLocalDate().format(dateFormatter);
                     String description = transaction.getDescription();
@@ -180,17 +177,17 @@ public class ImportService {
                     if (transaction.getType() == TransactionType.EXPENSE) {
                         amount = amount.negate();
                     }
-                    
+
                     csvPrinter.printRecord(
-                        date,
-                        description,
-                        amount.toString(),
-                        transaction.getCategory(),
-                        transaction.getPaymentMethod(),
-                        transaction.getCurrency()
+                            date,
+                            description,
+                            amount.toString(),
+                            transaction.getCategory(),
+                            transaction.getPaymentMethod(),
+                            transaction.getCurrency()
                     );
                 }
-                
+
                 csvPrinter.flush();
                 logger.info("Saved {} transactions to default file", transactions.size());
             }
@@ -198,7 +195,7 @@ public class ImportService {
             logger.error("Failed to save transactions to file", e);
         }
     }
-    
+
     private void validateRecord(CSVRecord record) throws IllegalArgumentException {
         validateField(record, "Date", "Date");
         validateField(record, "Amount", "Amount");
@@ -206,15 +203,14 @@ public class ImportService {
         validateField(record, "Description", "Description");
         validateField(record, "Payment Method", "Payment Method");
         validateField(record, "Currency", "Currency");
-        
-        // Validate amount format
+
         try {
             new BigDecimal(record.get("Amount"));
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Invalid amount format");
         }
     }
-    
+
     private void validateField(CSVRecord record, String fieldName, String displayName) {
         if (!record.isMapped(fieldName)) {
             throw new IllegalArgumentException(String.format("Missing required field: %s", displayName));
@@ -224,9 +220,8 @@ public class ImportService {
             throw new IllegalArgumentException(String.format("Field %s cannot be empty", displayName));
         }
     }
-    
+
     private Transaction parseTransaction(CSVRecord record) {
-        // Parse date
         LocalDateTime dateTime;
         try {
             LocalDate date = LocalDate.parse(record.get("Date"), dateFormatter);
@@ -234,34 +229,31 @@ public class ImportService {
         } catch (DateTimeParseException e) {
             throw new IllegalArgumentException("Invalid date format, should be: " + dateFormatter.toString());
         }
-        
-        // Parse amount and determine transaction type
+
         BigDecimal amount;
         try {
             amount = new BigDecimal(record.get("Amount"));
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Invalid amount format");
         }
-        
-        TransactionType type = amount.compareTo(BigDecimal.ZERO) < 0 ? 
-            TransactionType.EXPENSE : TransactionType.INCOME;
-        
-        // Get other fields
+
+        TransactionType type = amount.compareTo(BigDecimal.ZERO) < 0 ?
+                TransactionType.EXPENSE : TransactionType.INCOME;
+
         String description = record.get("Description").trim();
         String category = record.get("Category").trim();
         String paymentMethod = record.get("Payment Method").trim();
         String currency = record.get("Currency").trim();
-        
-        // Create transaction
+
         return new Transaction(
-            UUID.randomUUID().toString(),
-            amount.abs(),
-            category,
-            description,
-            dateTime,
-            type,
-            paymentMethod,
-            currency
+                UUID.randomUUID().toString(),
+                amount.abs(),
+                category,
+                description,
+                dateTime,
+                type,
+                paymentMethod,
+                currency
         );
     }
 }
